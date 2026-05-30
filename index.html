@@ -113,6 +113,7 @@
 
       <div class="nav-section">Finance</div>
       <div class="nav-item" onclick="showPage('loans')"><span class="nav-icon">◆</span>Loans</div>
+      <div class="nav-item" onclick="showPage('payments')"><span class="nav-icon">◑</span>Payments</div>
       <div class="nav-item" onclick="showPage('summary')"><span class="nav-icon">◧</span>Summary</div>
       <div class="nav-item" onclick="showPage('reports')"><span class="nav-icon">▤</span>Reports</div>
     </nav>
@@ -276,7 +277,7 @@
         <div class="table-card">
           <div class="table-header"><span class="table-title">Invoices</span></div>
           <table class="table">
-            <thead><tr><th>Bill#</th><th>Date</th><th>Transporter</th><th>Trips</th><th>Freight</th><th>Deduction</th><th>TDS</th><th>Net Payable</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Bill#</th><th>Date</th><th>Transporter</th><th>Trips</th><th>Freight</th><th>Deduction</th><th>Net Payable</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody id="billing-table-body"></tbody>
           </table>
         </div>
@@ -377,6 +378,105 @@
               <thead><tr><th>Date</th><th>Type</th><th>Loan/Lender</th><th>Amount</th><th>Reference</th><th>Actions</th></tr></thead>
               <tbody id="repayments-body"></tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== PAYMENTS ========== -->
+      <div id="page-payments" class="hidden">
+        <!-- Summary cards row -->
+        <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px" id="pay-stat-grid">
+          <div class="stat-card">
+            <div class="stat-label">Total Invoiced</div>
+            <div class="stat-value" style="color:var(--accent)" id="pay-total-inv">—</div>
+            <div class="stat-sub">All bills</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Total Received</div>
+            <div class="stat-value" style="color:var(--green)" id="pay-total-recv">—</div>
+            <div class="stat-sub">Paid invoices</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Outstanding</div>
+            <div class="stat-value" style="color:var(--red)" id="pay-outstanding">—</div>
+            <div class="stat-sub">Pending bills</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Transactions</div>
+            <div class="stat-value" id="pay-tx-count">—</div>
+            <div class="stat-sub">Total entries</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
+
+          <!-- Timeline -->
+          <div class="table-card">
+            <div class="table-header">
+              <span class="table-title">Transaction History <span class="table-count" id="pay-tx-count-label"></span></span>
+              <div style="display:flex;gap:8px;align-items:center">
+                <select id="pay-filter-transporter" onchange="renderPayments()" style="padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px">
+                  <option value="">All Transporters</option>
+                </select>
+                <select id="pay-filter-status" onchange="renderPayments()" style="padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px">
+                  <option value="">All Status</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Partial">Partial</option>
+                </select>
+                <input id="pay-search" placeholder="Search…" oninput="renderPayments()" style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px;width:130px">
+              </div>
+            </div>
+            <div id="pay-timeline" style="padding:8px 16px 16px"></div>
+          </div>
+
+          <!-- Right panel: Add payment + by-transporter summary -->
+          <div style="display:flex;flex-direction:column;gap:16px">
+
+            <!-- Add Payment -->
+            <div class="table-card" style="padding:16px">
+              <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px">Record Payment</div>
+              <div class="form-group" style="margin-bottom:10px">
+                <label style="font-size:11px;color:var(--text3)">Invoice</label>
+                <select id="pay-bill-select" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px" onchange="onPayBillSelect()"></select>
+              </div>
+              <div class="form-group" style="margin-bottom:10px">
+                <label style="font-size:11px;color:var(--text3)">Amount Received (₹)</label>
+                <input type="number" id="pay-amount" placeholder="0" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px;box-sizing:border-box">
+              </div>
+              <div class="form-group" style="margin-bottom:10px">
+                <label style="font-size:11px;color:var(--text3)">Date</label>
+                <input type="date" id="pay-date" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px;box-sizing:border-box">
+              </div>
+              <div class="form-group" style="margin-bottom:10px">
+                <label style="font-size:11px;color:var(--text3)">Mode</label>
+                <select id="pay-mode" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px">
+                  <option>Bank Transfer</option>
+                  <option>NEFT</option>
+                  <option>RTGS</option>
+                  <option>IMPS</option>
+                  <option>UPI</option>
+                  <option>Cheque</option>
+                  <option>Cash</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:12px">
+                <label style="font-size:11px;color:var(--text3)">Reference / UTR No.</label>
+                <input id="pay-ref" placeholder="Transaction ref…" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px;box-sizing:border-box">
+              </div>
+              <div class="form-group" style="margin-bottom:12px">
+                <label style="font-size:11px;color:var(--text3)">Notes</label>
+                <input id="pay-notes" placeholder="Optional notes…" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px;box-sizing:border-box">
+              </div>
+              <button class="btn btn-primary" style="width:100%" onclick="savePayment()">+ Record Payment</button>
+            </div>
+
+            <!-- By Transporter Balance -->
+            <div class="table-card" style="padding:16px">
+              <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px">Balance by Transporter</div>
+              <div id="pay-by-transporter"></div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -575,13 +675,11 @@
         </div>
         <div class="form-group"><label>Freight (₹)</label><input type="number" id="b-freight" oninput="calcBill()" placeholder="28000"></div>
         <div class="form-group"><label>Deduction (₹)</label><input type="number" id="b-deduct" oninput="calcBill()" value="0"></div>
-        <div class="form-group"><label>TDS %</label><input type="number" id="b-tds" oninput="calcBill()" value="2" step="0.5"></div>
         <div class="form-group"><label>Other Charges (₹)</label><input type="number" id="b-other" oninput="calcBill()" value="0"></div>
       </div>
       <div class="calc-box">
         <div class="calc-row"><span class="calc-label">Gross Freight</span><span class="calc-val" id="b-c-gross">₹0</span></div>
         <div class="calc-row"><span class="calc-label">Deduction</span><span class="calc-val text-red" id="b-c-ded">- ₹0</span></div>
-        <div class="calc-row"><span class="calc-label">TDS</span><span class="calc-val text-red" id="b-c-tds">- ₹0</span></div>
         <div class="calc-row"><span class="calc-label">Other Charges</span><span class="calc-val text-green" id="b-c-other">+ ₹0</span></div>
         <div class="calc-row calc-total"><span class="calc-label">Net Payable</span><span class="calc-val" id="b-c-net">₹0</span></div>
       </div>
