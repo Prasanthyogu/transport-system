@@ -368,138 +368,131 @@ html, body {
     min-width: 1000px;
 }
 
-/* =====================================================
-   FINAL MOBILE SIDEBAR FIX
-===================================================== */
+/* =========================================================
+   MOBILE RESPONSIVE FIX
+========================================================= */
 
-@media only screen and (max-width: 768px) {
+@media screen and (max-width: 1024px) {
 
-  .app {
-    display: block !important;
-  }
-
-  /* HIDE DESKTOP SIDEBAR STYLE */
+  /* Sidebar */
   .sidebar {
-    position: fixed !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    top: auto !important;
-
-    width: 100% !important;
-    height: 70px !important;
-
-    display: flex !important;
-    flex-direction: row !important;
-
-    background: var(--bg2) !important;
-    border-right: none !important;
-    border-top: 1px solid var(--border) !important;
-
-    z-index: 9999 !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
+    width: 70px;
   }
 
-  /* REMOVE UNUSED ELEMENTS */
-  .logo,
+  .logo-text,
+  .logo-sub,
   .nav-section,
+  .nav-item span:not(.nav-icon),
   .sidebar-footer {
-    display: none !important;
-  }
-
-  .nav {
-    display: flex !important;
-    flex-direction: row !important;
-    width: 100% !important;
-    padding: 0 !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
+    display: none;
   }
 
   .nav-item {
-    flex: 1 0 auto !important;
-
-    display: flex !important;
-    flex-direction: column !important;
-
-    justify-content: center !important;
-    align-items: center !important;
-
-    min-width: 75px !important;
-    height: 70px !important;
-
-    padding: 4px !important;
-    gap: 3px !important;
-
-    font-size: 10px !important;
-    text-align: center !important;
-    white-space: nowrap !important;
+    justify-content: center;
+    padding: 12px;
   }
 
-  .nav-item span:not(.nav-icon) {
-    display: block !important;
-    font-size: 10px !important;
-  }
-
-  .nav-item.active::before {
-    display: none !important;
-  }
-
-  .nav-icon {
-    font-size: 16px !important;
-  }
-
-  /* MAIN AREA */
+  /* Main area */
   .main {
-    width: 100% !important;
-    margin-left: 0 !important;
-    padding-bottom: 80px !important;
+    width: calc(100% - 70px);
   }
 
-  .content {
-    padding: 12px !important;
-  }
-
-  /* TOPBAR */
+  /* Topbar */
   .topbar {
-    height: auto !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    padding: 12px !important;
+    flex-wrap: wrap;
+    height: auto;
+    padding: 10px;
+    gap: 8px;
   }
 
   .topbar-title {
-    width: 100% !important;
+    width: 100%;
+    font-size: 16px;
+  }
+
+  .topbar-search {
+    width: 100%;
+  }
+
+  /* Dashboard cards */
+  .stat-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  /* Two-column layouts */
+  .form-grid,
+  div[style*="grid-template-columns:1fr 1fr"],
+  div[style*="grid-template-columns:1fr 280px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Tables */
+  .table-card {
+    overflow-x: auto;
+  }
+
+  table {
+    min-width: 900px;
+  }
+
+  /* Modal */
+  .modal {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  /* Buttons */
+  .btn {
+    width: auto;
+    white-space: nowrap;
+  }
+}
+
+/* =========================================================
+   SMALL MOBILE DEVICES
+========================================================= */
+
+@media screen and (max-width: 600px) {
+
+  .content {
+    padding: 10px;
+  }
+
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar {
+    align-items: stretch;
   }
 
   .topbar-search,
   .btn,
-  #theme-toggle,
-  .export-wrapper {
-    width: 100% !important;
+  #theme-toggle {
+    width: 100%;
   }
 
-  /* DASHBOARD */
-  .stat-grid {
-    grid-template-columns: 1fr !important;
+  .table-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
   }
 
-  /* TABLES */
-  .table-card {
-    overflow-x: auto !important;
+  .modal-body {
+    padding: 12px;
   }
 
-  table {
-    min-width: 850px !important;
+  .modal-foot {
+    flex-direction: column;
   }
 
-  /* FORM */
   .form-grid {
-    grid-template-columns: 1fr !important;
+    gap: 10px;
   }
 
-  /* MODAL */
-  .modal {
-    width: 95% !important;
+  input,
+  select,
+  textarea {
+    font-size: 16px;
   }
 }
