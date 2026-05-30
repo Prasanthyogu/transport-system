@@ -36,6 +36,7 @@ let db = {
   trips:[], vehicles:[], drivers:[], transporters:[],
   bills:[], maintenance:[], loans:[], privateLoans:[],
   repayments:[], diesel:[], fastag:[], adblue:[], otherExp:[],
+  payments:[],
   tripCounter:1, billCounter:1,
 };
 
@@ -103,12 +104,12 @@ const dbToTransporter = r => ({ ...r, terms: +r.terms });
 const billToDb = b => ({
   id: b.id, num: b.num, date: b.date, transporter: b.transporter,
   trips: b.trips, freight: b.freight, deduct: b.deduct,
-  tds: b.tds, other: b.other, status: b.status,
+  other: b.other, status: b.status,
 });
 const dbToBill = r => ({
   ...r,
   trips: Array.isArray(r.trips) ? r.trips : [],
-  freight: +r.freight, deduct: +r.deduct, tds: +r.tds, other: +r.other,
+  freight: +r.freight, deduct: +r.deduct, tds: 0, other: +r.other,
 });
 
 const maintToDb = m => ({
@@ -208,6 +209,7 @@ async function loadDB() {
       tripsRes, vehiclesRes, driversRes, transportersRes, billsRes,
       maintRes, loansRes, privateLoansRes, repaymentsRes,
       dieselRes, fastagRes, adblueRes, otherExpRes,
+      paymentsRes,
       tcRes, bcRes,
     ] = await Promise.all([
       sb.from('trips').select('*').order('id', { ascending: false }),
@@ -223,6 +225,7 @@ async function loadDB() {
       sb.from('fastag_expenses').select('*').order('id', { ascending: false }),
       sb.from('adblue_expenses').select('*').order('id', { ascending: false }),
       sb.from('other_expenses').select('*').order('id', { ascending: false }),
+      sb.from('bill_payments').select('*').order('id', { ascending: false }),
       sb.from('settings').select('value').eq('key','trip_counter').single(),
       sb.from('settings').select('value').eq('key','bill_counter').single(),
     ]);
@@ -240,6 +243,7 @@ async function loadDB() {
     db.fastag       = (fastagRes.data       || []).map(dbToFastag);
     db.adblue       = (adblueRes.data       || []).map(dbToAdblue);
     db.otherExp     = (otherExpRes.data     || []).map(dbToOtherExp);
+    db.payments     = (paymentsRes.data     || []).map(r => ({...r, amount: +r.amount}));
     db.tripCounter  = tcRes.data  ? parseInt(tcRes.data.value)  : 1;
     db.billCounter  = bcRes.data  ? parseInt(bcRes.data.value)  : 1;
 
@@ -308,8 +312,8 @@ function populateSelects() {
 }
 
 /* ── NAVIGATION ───────────────────────────────────────────── */
-const PAGE_TITLES  = {dashboard:'Dashboard',trips:'Trips',expenses:'Expenses',billing:'Billing',maintenance:'Maintenance',vehicles:'Vehicles',drivers:'Drivers',transporters:'Transporters',loans:'Loans',summary:'Summary',reports:'Reports'};
-const TOP_BTN_LBLS = {dashboard:'+ New Trip',trips:'+ New Trip',expenses:'+ Add Expense',billing:'+ New Invoice',maintenance:'+ Add Service',vehicles:'+ Add Vehicle',drivers:'+ Add Driver',transporters:'+ Add Transporter',loans:'+ Add Loan',summary:'Export',reports:'Print / PDF'};
+const PAGE_TITLES  = {dashboard:'Dashboard',trips:'Trips',expenses:'Expenses',billing:'Billing',maintenance:'Maintenance',vehicles:'Vehicles',drivers:'Drivers',transporters:'Transporters',loans:'Loans',payments:'Payments',summary:'Summary',reports:'Reports'};
+const TOP_BTN_LBLS = {dashboard:'+ New Trip',trips:'+ New Trip',expenses:'+ Add Expense',billing:'+ New Invoice',maintenance:'+ Add Service',vehicles:'+ Add Vehicle',drivers:'+ Add Driver',transporters:'+ Add Transporter',loans:'+ Add Loan',payments:'+ Record Payment',summary:'Export',reports:'Print / PDF'};
 
 function showPage(page) {
   document.querySelectorAll('[id^="page-"]').forEach(el => el.classList.add('hidden'));
@@ -324,7 +328,7 @@ function showPage(page) {
     vehicles: renderVehicles, drivers: renderDrivers, transporters: renderTransporters,
     maintenance: renderMaintenance, loans: renderLoans,
     expenses: () => { renderDiesel(); renderFastag(); renderAdblue(); renderOtherExp(); },
-    summary: renderPnL, reports: renderMonthlyReport,
+    payments: renderPayments, summary: renderPnL, reports: renderMonthlyReport,
   })[page]?.();
 }
 
@@ -338,6 +342,7 @@ function handleTopAction() {
   else if (page.includes('driver'))  openNewDriver();
   else if (page.includes('trans'))   openNewTransporter();
   else if (page.includes('loan'))    openNewLoan();
+  else if (page.includes('payment')) document.getElementById('pay-bill-select')?.focus();
   else if (page.includes('report'))  window.print();
   else openNewTrip();
 }
@@ -372,7 +377,7 @@ const CSV_DEFS = {
   'expenses-fastag': { label:'Fastag_Expenses', headers:['Date','Vehicle','Trip#','Toll Plaza','Amount (Rs)'], rows: () => db.fastag.map(f=>[f.date,f.vehicle,f.trip,f.plaza,f.amount]) },
   'expenses-adblue': { label:'Adblue_Records', headers:['Date','Vehicle','Current KM','Prev Fill KM','KM per 20L','Next Fill Est. KM','Qty (L)','Rate (Rs/L)','Amount (Rs)'], rows: () => db.adblue.map(a=>[a.date,a.vehicle,a.curKm,a.prevKm,a.curKm-a.prevKm,a.curKm+(a.curKm-a.prevKm),a.qty,a.rate,a.amount]) },
   'expenses-other': { label:'Other_Expenses', headers:['Date','Vehicle','Trip#','Category','Description','Amount (Rs)'], rows: () => db.otherExp.map(e=>[e.date,e.vehicle,e.trip,e.cat,e.desc,e.amount]) },
-  'billing': { label:'Billing_Invoices', headers:['Bill#','Date','Transporter','Trips','Freight (Rs)','Deduction (Rs)','TDS%','TDS Amount (Rs)','Other Charges (Rs)','Net Payable (Rs)','Status'], rows: () => db.bills.map(b => { const tds=Math.round((b.freight*b.tds)/100); return [b.num,b.date,b.transporter,(b.trips||[]).join('|'),b.freight,b.deduct,b.tds,tds,b.other,b.freight-b.deduct-tds+b.other,b.status]; }) },
+  'billing': { label:'Billing_Invoices', headers:['Bill#','Date','Transporter','Trips','Freight (Rs)','Deduction (Rs)','Other Charges (Rs)','Net Payable (Rs)','Status'], rows: () => db.bills.map(b => [b.num,b.date,b.transporter,(b.trips||[]).join('|'),b.freight,b.deduct,b.other,b.freight-b.deduct+b.other,b.status]) },
   'maintenance': { label:'Maintenance', headers:['Date','Vehicle','Service Type','Workshop','Current KM','Next Service KM','Parts Cost (Rs)','Labour Cost (Rs)','Total Cost (Rs)','Notes'], rows: () => db.maintenance.map(m=>[m.date,m.vehicle,m.type,m.workshop,m.curKm,m.nextKm,m.parts,m.labour,m.parts+m.labour,m.notes]) },
   'vehicles': { label:'Vehicles', headers:['Reg. No','Type','Make','Model','Year','Ownership','Chassis No','Engine No','Insurance Expiry','Permit Expiry','FC Expiry','PUC Expiry','Status'], rows: () => db.vehicles.map(v=>[v.reg,v.type,v.make,v.model,v.year,v.own,v.chassis,v.engine,v.ins,v.permit,v.fc,v.puc,v.status]) },
   'drivers': { label:'Drivers', headers:['Name','Mobile','Aadhar','License No','License Expiry','Monthly Salary (Rs)','Address','Emergency Contact','Emergency Mobile','Status'], rows: () => db.drivers.map(d=>[d.name,d.mobile,d.aadhar,d.lic,d.licExp,d.salary,d.address,d.ecName,d.ecMobile,d.status]) },
@@ -630,7 +635,7 @@ function openNewBilling() {
   document.getElementById('b-num').value = 'INV-' + String(db.billCounter).padStart(4, '0');
   document.getElementById('b-date').value = today();
   document.getElementById('b-freight').value = ''; document.getElementById('b-deduct').value = '0';
-  document.getElementById('b-tds').value = '2'; document.getElementById('b-other').value = '0';
+  document.getElementById('b-other').value = '0';
   _wireBillingTripSelect();
   const bTrips = document.getElementById('b-trips');
   if (bTrips) [...bTrips.options].forEach(o => o.selected = false);
@@ -643,7 +648,7 @@ function editBill(idx) {
   document.getElementById('b-num').value = b.num; document.getElementById('b-date').value = b.date;
   document.getElementById('b-transporter').value = b.transporter;
   document.getElementById('b-freight').value = b.freight; document.getElementById('b-deduct').value = b.deduct;
-  document.getElementById('b-tds').value = b.tds; document.getElementById('b-other').value = b.other;
+  document.getElementById('b-other').value = b.other;
   _wireBillingTripSelect();
   const bTrips = document.getElementById('b-trips');
   if (bTrips) [...bTrips.options].forEach(o => { o.selected = (b.trips || []).includes(o.value); });
@@ -658,7 +663,7 @@ async function saveBill() {
     transporter: document.getElementById('b-transporter').value, trips: selTrips,
     freight: parseFloat(document.getElementById('b-freight').value) || 0,
     deduct: parseFloat(document.getElementById('b-deduct').value) || 0,
-    tds: parseFloat(document.getElementById('b-tds').value) || 2,
+    tds: 0,
     other: parseFloat(document.getElementById('b-other').value) || 0,
     status: idx >= 0 ? db.bills[idx].status : 'Pending',
   };
@@ -1026,14 +1031,11 @@ function calcTrip() {
 function calcBill() {
   const fr=parseFloat(document.getElementById('b-freight').value)||0;
   const ded=parseFloat(document.getElementById('b-deduct').value)||0;
-  const tds=parseFloat(document.getElementById('b-tds').value)||2;
   const other=parseFloat(document.getElementById('b-other').value)||0;
-  const tdsAmt=(fr*tds)/100;
   document.getElementById('b-c-gross').textContent='₹'+Math.round(fr).toLocaleString();
   document.getElementById('b-c-ded').textContent='- ₹'+Math.round(ded).toLocaleString();
-  document.getElementById('b-c-tds').textContent='- ₹'+Math.round(tdsAmt).toLocaleString();
   document.getElementById('b-c-other').textContent='+ ₹'+Math.round(other).toLocaleString();
-  document.getElementById('b-c-net').textContent='₹'+Math.round(fr-ded-tdsAmt+other).toLocaleString();
+  document.getElementById('b-c-net').textContent='₹'+Math.round(fr-ded+other).toLocaleString();
 }
 function calcAdblue() {
   const cur=parseFloat(document.getElementById('ab-cur-km').value)||0;
@@ -1072,7 +1074,7 @@ function renderDashboard() {
   const active=db.trips.filter(t=>t.status==='Running'||t.status==='Loading').length;
   const revenue=db.trips.reduce((s,t)=>s+t.freight,0);
   const pendingBills=db.bills.filter(b=>b.status==='Pending');
-  const pendingAmt=pendingBills.reduce((s,b)=>s+(b.freight-b.deduct-(b.freight*b.tds/100)+b.other),0);
+  const pendingAmt=pendingBills.reduce((s,b)=>s+(b.freight-b.deduct+b.other),0);
   const el=id=>document.getElementById(id);
   if(el('d-active-trips')) el('d-active-trips').textContent=active;
   if(el('d-revenue'))      el('d-revenue').textContent='₹'+(revenue/100000).toFixed(1)+'L';
@@ -1186,19 +1188,251 @@ function renderOtherExp() {
   ).join('')||'<tr><td colspan="7" style="text-align:center;padding:14px;color:var(--text3)">No records</td></tr>';
 }
 
+/* ── PAYMENTS PAGE ────────────────────────────────────────── */
+
+function _billNet(b) {
+  return b.freight - b.deduct + b.other;
+}
+
+function _billPaidAmt(b) {
+  return db.payments.filter(p => p.bill_id == b.id).reduce((s, p) => s + p.amount, 0);
+}
+
+function populatePayBillSelect() {
+  const sel = document.getElementById('pay-bill-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Select Invoice —</option>' +
+    db.bills.map(b => {
+      const net = _billNet(b);
+      const paid = _billPaidAmt(b);
+      const bal = net - paid;
+      return `<option value="${b.id}">[${b.num}] ${b.transporter} — ₹${bal.toLocaleString()} due</option>`;
+    }).join('');
+}
+
+function onPayBillSelect() {
+  const billId = document.getElementById('pay-bill-select').value;
+  if (!billId) return;
+  const b = db.bills.find(b => b.id == billId);
+  if (!b) return;
+  const bal = _billNet(b) - _billPaidAmt(b);
+  document.getElementById('pay-amount').value = bal > 0 ? bal : '';
+}
+
+async function savePayment() {
+  const billId = document.getElementById('pay-bill-select').value;
+  const amount = parseFloat(document.getElementById('pay-amount').value) || 0;
+  const date   = document.getElementById('pay-date').value;
+  const mode   = document.getElementById('pay-mode').value;
+  const ref    = document.getElementById('pay-ref').value.trim();
+  const notes  = document.getElementById('pay-notes').value.trim();
+
+  if (!billId) { alert('Please select an invoice.'); return; }
+  if (!amount || amount <= 0) { alert('Please enter a valid amount.'); return; }
+  if (!date) { alert('Please enter a date.'); return; }
+
+  const b = db.bills.find(b => b.id == billId);
+  const rec = {
+    id: Date.now(),
+    bill_id: parseInt(billId),
+    bill_num: b ? b.num : '',
+    transporter: b ? b.transporter : '',
+    amount, date, mode, ref, notes,
+  };
+
+  const { error } = await sb.from('bill_payments').insert({
+    id: rec.id, bill_id: rec.bill_id, bill_num: rec.bill_num,
+    transporter: rec.transporter, amount: rec.amount,
+    date: rec.date, mode: rec.mode, ref: rec.ref, notes: rec.notes,
+  });
+
+  if (error) {
+    // Graceful fallback — store locally if Supabase table doesn't exist yet
+    console.warn('bill_payments table not found — storing locally only', error);
+  }
+
+  db.payments.unshift(rec);
+
+  // Auto-update bill status
+  if (b) {
+    const totalPaid = _billPaidAmt(b);
+    const net = _billNet(b);
+    if (totalPaid >= net) {
+      b.status = 'Paid';
+      await dbUpsert('bills', billToDb(b));
+    } else if (totalPaid > 0) {
+      b.status = 'Partial';
+      await dbUpsert('bills', billToDb(b));
+    }
+  }
+
+  // Reset form
+  ['pay-amount','pay-ref','pay-notes'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  document.getElementById('pay-bill-select').value = '';
+
+  renderPayments();
+  renderBilling();
+}
+
+async function deletePayment(idx) {
+  const p = db.payments[idx];
+  const { error } = await sb.from('bill_payments').delete().eq('id', p.id);
+  if (!error) {
+    db.payments.splice(idx, 1);
+    // Recompute bill status
+    const b = db.bills.find(b => b.id == p.bill_id);
+    if (b) {
+      const totalPaid = _billPaidAmt(b);
+      const net = _billNet(b);
+      b.status = totalPaid >= net ? 'Paid' : totalPaid > 0 ? 'Partial' : 'Pending';
+      await dbUpsert('bills', billToDb(b));
+    }
+    renderPayments(); renderBilling();
+  }
+}
+
+function renderPayments() {
+  // Populate invoice dropdown
+  populatePayBillSelect();
+
+  // Populate transporter filter
+  const tFilter = document.getElementById('pay-filter-transporter');
+  if (tFilter) {
+    const cur = tFilter.value;
+    const transporters = [...new Set(db.bills.map(b => b.transporter))].sort();
+    tFilter.innerHTML = '<option value="">All Transporters</option>' +
+      transporters.map(t => `<option value="${t}"${cur===t?' selected':''}>${t}</option>`).join('');
+  }
+
+  // Stats
+  const totalInv   = db.bills.reduce((s, b) => s + _billNet(b), 0);
+  const totalRecv  = db.payments.reduce((s, p) => s + p.amount, 0);
+  const outstanding = totalInv - totalRecv;
+  const el = id => document.getElementById(id);
+  if (el('pay-total-inv'))  el('pay-total-inv').textContent  = '₹' + (totalInv/100000).toFixed(1) + 'L';
+  if (el('pay-total-recv')) el('pay-total-recv').textContent = '₹' + (totalRecv/100000).toFixed(1) + 'L';
+  if (el('pay-outstanding')) el('pay-outstanding').textContent = '₹' + (outstanding/100000).toFixed(1) + 'L';
+  if (el('pay-tx-count')) el('pay-tx-count').textContent = db.payments.length;
+
+  // Filters
+  const searchQ    = (document.getElementById('pay-search')?.value || '').toLowerCase();
+  const filterT    = document.getElementById('pay-filter-transporter')?.value || '';
+  const filterS    = document.getElementById('pay-filter-status')?.value || '';
+
+  // Build combined timeline from bills + payments
+  // For each bill build its payment entries; also show pending bills with no payments
+  const timelineItems = [];
+
+  // Group payments by bill
+  const billPayMap = {};
+  db.payments.forEach((p, idx) => {
+    if (!billPayMap[p.bill_id]) billPayMap[p.bill_id] = [];
+    billPayMap[p.bill_id].push({...p, _idx: idx});
+  });
+
+  db.bills.forEach(b => {
+    const net = _billNet(b);
+    const paidAmt = _billPaidAmt(b);
+    const bal = net - paidAmt;
+
+    if (filterT && b.transporter !== filterT) return;
+    if (filterS && b.status !== filterS) return;
+    if (searchQ && !b.num.toLowerCase().includes(searchQ) && !b.transporter.toLowerCase().includes(searchQ)) return;
+
+    timelineItems.push({ type: 'bill', bill: b, net, paidAmt, bal, payments: billPayMap[b.id] || [] });
+  });
+
+  // Sort by bill date descending
+  timelineItems.sort((a, b) => (b.bill.date || '').localeCompare(a.bill.date || ''));
+
+  if (el('pay-tx-count-label')) el('pay-tx-count-label').textContent = timelineItems.length ? `(${timelineItems.length})` : '';
+
+  const timeline = document.getElementById('pay-timeline');
+  if (!timeline) return;
+
+  if (!timelineItems.length) {
+    timeline.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text3);font-size:13px">No transactions match the filter.</div>`;
+    return;
+  }
+
+  timeline.innerHTML = timelineItems.map(item => {
+    const b = item.bill;
+    const pct = item.net > 0 ? Math.min(100, Math.round((item.paidAmt / item.net) * 100)) : 0;
+    const statusColor = b.status === 'Paid' ? 'var(--green)' : b.status === 'Partial' ? 'var(--amber)' : 'var(--red)';
+
+    const payRows = item.payments.length
+      ? item.payments.map((p, i) => `
+          <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:var(--bg2);border-radius:6px;margin-top:6px">
+            <div style="width:3px;height:32px;background:var(--green);border-radius:2px;flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:12px;font-weight:500;color:var(--green)">₹${p.amount.toLocaleString()} received</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:1px">${p.date} · ${p.mode}${p.ref ? ' · ' + p.ref : ''}${p.notes ? ' · ' + p.notes : ''}</div>
+            </div>
+            <div class="icon-btn" onclick="confirmDelete('Delete this payment entry?',()=>deletePayment(${p._idx}))" title="Delete payment" style="font-size:11px">✕</div>
+          </div>`).join('')
+      : `<div style="font-size:11px;color:var(--text3);padding:6px 0 2px">No payments recorded yet.</div>`;
+
+    return `
+      <div style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;background:var(--bg)">
+        <!-- Bill header -->
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="mono text-accent" style="font-size:13px;font-weight:600">${b.num}</span>
+          <span style="font-size:12px;color:var(--text2)">${b.transporter}</span>
+          <span style="font-size:11px;color:var(--text3)">${b.date}</span>
+          <span style="margin-left:auto;font-size:11px;padding:2px 8px;border-radius:10px;background:${statusColor}22;color:${statusColor};font-weight:600">${b.status}</span>
+        </div>
+        <!-- Progress bar -->
+        <div style="margin:10px 0 4px">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-bottom:4px">
+            <span>₹${item.paidAmt.toLocaleString()} received of ₹${item.net.toLocaleString()}</span>
+            <span style="color:${statusColor}">${pct}%${item.bal > 0 ? ' · ₹' + item.bal.toLocaleString() + ' due' : ''}</span>
+          </div>
+          <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${statusColor};border-radius:3px;transition:width .3s"></div>
+          </div>
+        </div>
+        <!-- Payment entries -->
+        ${payRows}
+      </div>`;
+  }).join('');
+
+  // By-transporter panel
+  const byT = document.getElementById('pay-by-transporter');
+  if (byT) {
+    const tMap = {};
+    db.bills.forEach(b => {
+      if (!tMap[b.transporter]) tMap[b.transporter] = { inv:0, recv:0 };
+      tMap[b.transporter].inv += _billNet(b);
+      tMap[b.transporter].recv += _billPaidAmt(b);
+    });
+    byT.innerHTML = Object.entries(tMap).sort((a,b) => b[1].inv - a[1].inv).map(([name, v]) => {
+      const bal = v.inv - v.recv;
+      return `<div class="pl-row" style="margin-bottom:10px">
+        <span style="font-size:12px;color:var(--text2)">${name}</span>
+        <div style="text-align:right">
+          <div style="font-size:12px;font-weight:600;color:${bal > 0 ? 'var(--red)' : 'var(--green)'}">₹${Math.abs(bal).toLocaleString()}</div>
+          <div style="font-size:10px;color:var(--text3)">${bal > 0 ? 'due' : 'settled'}</div>
+        </div>
+      </div>`;
+    }).join('') || '<div style="color:var(--text3);font-size:12px">No billing data.</div>';
+  }
+
+  // Set default date for payment form
+  const payDate = document.getElementById('pay-date');
+  if (payDate && !payDate.value) payDate.value = today();
+}
+
 /* ── RENDER BILLING ───────────────────────────────────────── */
 function renderBilling() {
   const tbody=document.getElementById('billing-table-body'); if(!tbody) return;
   tbody.innerHTML=db.bills.map((b,i)=>{
-    const tdsAmt=Math.round((b.freight*b.tds)/100);
-    const net=b.freight-b.deduct-tdsAmt+b.other;
+    const net=b.freight-b.deduct+b.other;
     return `<tr>
       <td><span class="mono text-accent">${b.num}</span></td>
       <td>${b.date}</td><td>${b.transporter}</td>
       <td style="font-size:11px">${(b.trips||[]).join(', ')||'—'}</td>
       <td>₹${b.freight.toLocaleString()}</td>
       <td class="text-red">₹${b.deduct.toLocaleString()}</td>
-      <td class="text-red">₹${tdsAmt.toLocaleString()}</td>
       <td class="text-green">₹${net.toLocaleString()}</td>
       <td>${statusBadge(b.status)}</td>
       <td><div class="action-row">
@@ -1206,7 +1440,7 @@ function renderBilling() {
         <div class="icon-btn" onclick="markBillPaid(${i})" title="Mark Paid">✓</div>
         <div class="icon-btn" onclick="confirmDelete('Delete invoice ${b.num}?',()=>deleteBill(${i}))">✕</div>
       </div></td></tr>`;
-  }).join('')||'<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text3)">No invoices yet</td></tr>';
+  }).join('')||'<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--text3)">No invoices yet</td></tr>';
 }
 
 /* ── RENDER MAINTENANCE ───────────────────────────────────── */
@@ -1278,7 +1512,7 @@ function renderTransporters() {
   tbody.innerHTML=db.transporters.map((t,i)=>{
     const myT=db.trips.filter(tr=>tr.transporter===t.name);
     const billed=myT.reduce((s,tr)=>s+tr.freight,0);
-    const recv=db.bills.filter(b=>b.transporter===t.name&&b.status==='Paid').reduce((s,b)=>s+(b.freight-b.deduct-(b.freight*b.tds/100)+b.other),0);
+    const recv=db.bills.filter(b=>b.transporter===t.name&&b.status==='Paid').reduce((s,b)=>s+(b.freight-b.deduct+b.other),0);
     const bal=billed-recv;
     return `<tr>
       <td><b>${t.name}</b></td><td>${t.contact}</td><td>${t.mobile}</td>
@@ -1429,7 +1663,7 @@ function renderTransporterSummary() {
   tbody.innerHTML=db.transporters.map(t=>{
     const tT=db.trips.filter(tr=>tr.transporter===t.name);
     const billed=tT.reduce((s,tr)=>s+tr.freight,0);
-    const recv=db.bills.filter(b=>b.transporter===t.name&&b.status==='Paid').reduce((s,b)=>s+(b.freight-b.deduct-(b.freight*b.tds/100)+b.other),0);
+    const recv=db.bills.filter(b=>b.transporter===t.name&&b.status==='Paid').reduce((s,b)=>s+(b.freight-b.deduct+b.other),0);
     const pending=billed-recv;
     return `<tr><td><b>${t.name}</b></td><td>${tT.length}</td>
       <td>₹${billed.toLocaleString()}</td><td>₹${Math.round(recv).toLocaleString()}</td>
@@ -1473,11 +1707,12 @@ async function clearAllData() {
     showLoading(true, 'Clearing all data…');
     const tables = ['trips','vehicles','drivers','transporters','bills','maintenance',
                     'loans','private_loans','repayments','diesel_expenses',
-                    'fastag_expenses','adblue_expenses','other_expenses'];
+                    'fastag_expenses','adblue_expenses','other_expenses','bill_payments'];
     await Promise.all(tables.map(t => sb.from(t).delete().neq('id', -1)));
     await sb.from('settings').upsert([{key:'trip_counter',value:'1'},{key:'bill_counter',value:'1'}]);
     db = { trips:[],vehicles:[],drivers:[],transporters:[],bills:[],maintenance:[],
            loans:[],privateLoans:[],repayments:[],diesel:[],fastag:[],adblue:[],otherExp:[],
+           payments:[],
            tripCounter:1, billCounter:1 };
     showLoading(false);
     populateSelects(); showPage('dashboard');
