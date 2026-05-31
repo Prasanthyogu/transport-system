@@ -27,7 +27,46 @@ function applyTheme(mode) {
 function toggleTheme() {
   applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
 }
+function toggleSidebar() {
+  document.body.classList.toggle('sidebar-collapsed');
+}
+function workspaceInitials(value) {
+  return String(value || 'Workspace').split(/\s|-/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
+}
+function initWorkspaceEditor() {
+  const nameEl = document.getElementById('workspace-name');
+  const avatarEl = document.querySelector('.workspace-avatar');
+  if (!nameEl) return;
+  const saved = localStorage.getItem('fleetops_workspace_name');
+  if (saved) nameEl.value = saved;
+  if (avatarEl) avatarEl.textContent = workspaceInitials(nameEl.value);
+
+  const save = () => {
+    const clean = nameEl.value.replace(/\s+/g, ' ').trim() || 'Apex Logistics';
+    nameEl.value = clean;
+    localStorage.setItem('fleetops_workspace_name', clean);
+    if (avatarEl) avatarEl.textContent = workspaceInitials(clean);
+  };
+  nameEl.addEventListener('focus', () => nameEl.select());
+  nameEl.addEventListener('input', () => {
+    if (avatarEl) avatarEl.textContent = workspaceInitials(nameEl.value);
+  });
+  nameEl.addEventListener('blur', save);
+  nameEl.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      nameEl.blur();
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      nameEl.value = localStorage.getItem('fleetops_workspace_name') || 'Apex Logistics';
+      if (avatarEl) avatarEl.textContent = workspaceInitials(nameEl.value);
+      nameEl.blur();
+    }
+  });
+}
 initTheme();
+document.addEventListener('DOMContentLoaded', initWorkspaceEditor);
 
 /* ── IN-MEMORY CACHE ──────────────────────────────────────── */
 // This mirrors Supabase data locally for fast rendering.
@@ -36,7 +75,7 @@ let db = {
   trips:[], vehicles:[], drivers:[], transporters:[],
   bills:[], maintenance:[], loans:[], privateLoans:[],
   repayments:[], diesel:[], fastag:[], adblue:[], otherExp:[],
-  payments:[],
+  payments:[], advances:[],
   tripCounter:1, billCounter:1,
 };
 
@@ -67,6 +106,8 @@ const tripToDb = t => ({
   start_km: t.startKm, end_km: t.endKm, km: t.km,
   freight: t.freight, mileage: t.mileage, dprice: t.dprice,
   maint_km: t.maintKm, status: t.status, notes: t.notes,
+  trip_salary: t.tripSalary,
+  driver_salary_paid: t.driverSalaryPaid || false,
 });
 const dbToTrip = r => ({
   id: r.id, num: r.num, date: r.date, vehicle: r.vehicle,
@@ -75,6 +116,8 @@ const dbToTrip = r => ({
   startKm: +r.start_km, endKm: +r.end_km, km: +r.km,
   freight: +r.freight, mileage: +r.mileage, dprice: +r.dprice,
   maintKm: +r.maint_km, status: r.status, notes: r.notes || '',
+  tripSalary: +(r.trip_salary||0),
+  driverSalaryPaid: r.driver_salary_paid || false,
 });
 
 const vehicleToDb = v => ({
@@ -87,12 +130,27 @@ const dbToVehicle = r => ({ ...r });
 const driverToDb = d => ({
   id: d.id, name: d.name, mobile: d.mobile, lic: d.lic,
   lic_exp: d.licExp, aadhar: d.aadhar, salary: d.salary,
+  salary_type: d.salaryType || 'fixed',
+  per_trip_rate: d.perTripRate || 0,
+  per_km_rate: d.perKmRate || 0,
   address: d.address, ec_name: d.ecName, ec_mobile: d.ecMobile, status: d.status,
 });
 const dbToDriver = r => ({
   id: r.id, name: r.name, mobile: r.mobile, lic: r.lic,
   licExp: r.lic_exp, aadhar: r.aadhar, salary: +r.salary,
+  salaryType: r.salary_type || 'fixed',
+  perTripRate: +(r.per_trip_rate || 0),
+  perKmRate: +(r.per_km_rate || 0),
   address: r.address, ecName: r.ec_name, ecMobile: r.ec_mobile, status: r.status,
+});
+
+const advanceToDb = a => ({
+  id: a.id, date: a.date, driver: a.driver,
+  trip: a.trip || '', amount: a.amount, note: a.note || '',
+});
+const dbToAdvance = r => ({
+  id: r.id, date: r.date, driver: r.driver,
+  trip: r.trip || '', amount: +r.amount, note: r.note || '',
 });
 
 const transporterToDb = t => ({
@@ -209,7 +267,7 @@ async function loadDB() {
       tripsRes, vehiclesRes, driversRes, transportersRes, billsRes,
       maintRes, loansRes, privateLoansRes, repaymentsRes,
       dieselRes, fastagRes, adblueRes, otherExpRes,
-      paymentsRes,
+      paymentsRes, advancesRes,
       tcRes, bcRes,
     ] = await Promise.all([
       sb.from('trips').select('*').order('id', { ascending: false }),
@@ -226,6 +284,7 @@ async function loadDB() {
       sb.from('adblue_expenses').select('*').order('id', { ascending: false }),
       sb.from('other_expenses').select('*').order('id', { ascending: false }),
       sb.from('bill_payments').select('*').order('id', { ascending: false }),
+      sb.from('driver_advances').select('*').order('id', { ascending: false }),
       sb.from('settings').select('value').eq('key','trip_counter').single(),
       sb.from('settings').select('value').eq('key','bill_counter').single(),
     ]);
@@ -244,8 +303,14 @@ async function loadDB() {
     db.adblue       = (adblueRes.data       || []).map(dbToAdblue);
     db.otherExp     = (otherExpRes.data     || []).map(dbToOtherExp);
     db.payments     = (paymentsRes.data     || []).map(r => ({...r, amount: +r.amount}));
+    db.advances     = (advancesRes.data     || []).map(dbToAdvance);
     db.tripCounter  = tcRes.data  ? parseInt(tcRes.data.value)  : 1;
     db.billCounter  = bcRes.data  ? parseInt(bcRes.data.value)  : 1;
+    // Clamp counter to actual max so it never collides with existing rows
+    if (db.trips.length > 0) {
+      const maxTrip = Math.max(...db.trips.map(t => { const m = String(t.num).match(/T-(\d+)/); return m ? parseInt(m[1]) : 0; }));
+      if (maxTrip >= db.tripCounter) db.tripCounter = maxTrip + 1;
+    }
 
     // Update sidebar status
     const status = document.getElementById('sb-status');
@@ -304,6 +369,7 @@ function populateSelects() {
   const td = document.getElementById('t-driver');      if (td) td.innerHTML = drvOpts;
   const tt = document.getElementById('t-transporter'); if (tt) tt.innerHTML = trpOpts;
   const bt = document.getElementById('b-transporter'); if (bt) bt.innerHTML = trpOpts;
+  const ad = document.getElementById('adv-driver');    if (ad) ad.innerHTML = drvOpts;
   ['ed-trip','ef-trip','eo-trip'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = tripOpts; });
 
   const vf = document.getElementById('trip-vehicle-filter');
@@ -316,7 +382,7 @@ const PAGE_TITLES  = {dashboard:'Dashboard',trips:'Trips',expenses:'Expenses',bi
 const TOP_BTN_LBLS = {dashboard:'+ New Trip',trips:'+ New Trip',expenses:'+ Add Expense',billing:'+ New Invoice',maintenance:'+ Add Service',vehicles:'+ Add Vehicle',drivers:'+ Add Driver',transporters:'+ Add Transporter',loans:'+ Add Loan',payments:'+ Record Payment',summary:'Export',reports:'Print / PDF'};
 
 function showPage(page) {
-  document.querySelectorAll('[id^="page-"]').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('[id^="page-"]:not(#page-title)').forEach(el => el.classList.add('hidden'));
   document.getElementById('page-' + page).classList.remove('hidden');
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', !!(el.getAttribute('onclick') && el.getAttribute('onclick').includes("'" + page + "'")));
@@ -327,7 +393,7 @@ function showPage(page) {
     dashboard: renderDashboard, trips: renderTrips, billing: renderBilling,
     vehicles: renderVehicles, drivers: renderDrivers, transporters: renderTransporters,
     maintenance: renderMaintenance, loans: renderLoans,
-    expenses: () => { renderDiesel(); renderFastag(); renderAdblue(); renderOtherExp(); },
+    expenses: () => { renderDiesel(); renderFastag(); renderAdblue(); renderOtherExp(); renderDriverSalaries(); },
     payments: renderPayments, summary: renderPnL, reports: renderMonthlyReport,
   })[page]?.();
 }
@@ -407,7 +473,7 @@ function closeModal(id) {
     transporter:'edit-transporter-index',maintenance:'edit-maint-index',loan:'edit-loan-index',
     billing:'edit-bill-index','expense-diesel':'edit-diesel-index',
     'expense-fastag':'edit-fastag-index','expense-adblue':'edit-adblue-index',
-    'expense-other':'edit-other-index'};
+    'expense-other':'edit-other-index','driver-advance':'edit-adv-id'};
   if (map[id]) { const el = document.getElementById(map[id]); if (el) el.value = '-1'; }
 }
 document.addEventListener('keydown', e => {
@@ -432,11 +498,22 @@ function openNewTrip() {
   document.getElementById('trip-modal-title').textContent = 'New Trip';
   document.getElementById('t-num').value = 'T-' + String(db.tripCounter).padStart(4, '0');
   document.getElementById('t-date').value = today();
-  ['t-freight','t-from','t-to','t-start-km','t-end-km','t-notes'].forEach(id => { document.getElementById(id).value = ''; });
+  ['t-freight','t-from','t-to','t-start-km','t-end-km','t-notes','t-trip-salary'].forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('t-mileage').value = '4.2';
   document.getElementById('t-dprice').value = '94.50';
   document.getElementById('t-maint-km').value = '1.8';
   calcTrip(); _show('trip');
+}
+function onDriverChange() {
+  const name = document.getElementById('t-driver').value;
+  const drv = db.drivers.find(d => d.name === name);
+  const sal = document.getElementById('t-trip-salary');
+  if (sal && drv) {
+    if (drv.salaryType === 'per-trip') sal.value = drv.perTripRate || 0;
+    else if (drv.salaryType === 'per-km') sal.value = 0; // auto-calculated in calcTrip
+    else sal.value = drv.salary || 0;
+  }
+  calcTrip();
 }
 function editTrip(idx) {
   const t = db.trips[idx];
@@ -450,18 +527,21 @@ function editTrip(idx) {
   document.getElementById('t-freight').value = t.freight; document.getElementById('t-mileage').value = t.mileage;
   document.getElementById('t-dprice').value = t.dprice; document.getElementById('t-maint-km').value = t.maintKm;
   document.getElementById('t-status').value = t.status; document.getElementById('t-notes').value = t.notes;
+  document.getElementById('t-trip-salary').value = t.tripSalary || '';
   calcTrip(); _show('trip');
 }
 async function saveTrip() {
   const idx = parseInt(document.getElementById('edit-trip-index').value);
   const sk = parseFloat(document.getElementById('t-start-km').value) || 0;
   const ek = parseFloat(document.getElementById('t-end-km').value) || 0;
+  const driverName = document.getElementById('t-driver').value;
+  const drvObj = db.drivers.find(d => d.name === driverName);
   const trip = {
     id:          idx >= 0 ? db.trips[idx].id : Date.now(),
     num:         document.getElementById('t-num').value,
     date:        document.getElementById('t-date').value,
     vehicle:     document.getElementById('t-vehicle').value,
-    driver:      document.getElementById('t-driver').value,
+    driver:      driverName,
     transporter: document.getElementById('t-transporter').value,
     from:        document.getElementById('t-from').value,
     to:          document.getElementById('t-to').value,
@@ -472,6 +552,7 @@ async function saveTrip() {
     maintKm:     parseFloat(document.getElementById('t-maint-km').value) || 1.8,
     status:      document.getElementById('t-status').value,
     notes:       document.getElementById('t-notes').value,
+    tripSalary:  parseFloat(document.getElementById('t-trip-salary').value) || 0,
   };
   const ok = await dbUpsert('trips', tripToDb(trip));
   if (!ok) return;
@@ -532,11 +613,21 @@ async function deleteVehicle(idx) {
 }
 
 /* ── DRIVERS ──────────────────────────────────────────────── */
+function toggleSalaryFields() {
+  const type = document.getElementById('dr-salary-type').value;
+  document.getElementById('dr-salary-row').classList.toggle('hidden', type !== 'fixed');
+  document.getElementById('dr-per-trip-row').classList.toggle('hidden', type !== 'per-trip');
+  document.getElementById('dr-per-km-row').classList.toggle('hidden', type !== 'per-km');
+}
 function openNewDriver() {
   document.getElementById('edit-driver-index').value = -1;
   document.getElementById('driver-modal-title').textContent = 'Add Driver';
   ['dr-name','dr-mobile','dr-lic','dr-lic-exp','dr-aadhar','dr-address','dr-ec-name','dr-ec-mobile'].forEach(id => { document.getElementById(id).value = ''; });
   document.getElementById('dr-salary').value = '';
+  document.getElementById('dr-per-trip-rate').value = '';
+  document.getElementById('dr-per-km-rate').value = '';
+  document.getElementById('dr-salary-type').value = 'fixed';
+  toggleSalaryFields();
   _show('driver');
 }
 function editDriver(idx) {
@@ -545,19 +636,28 @@ function editDriver(idx) {
   document.getElementById('driver-modal-title').textContent = 'Edit Driver';
   document.getElementById('dr-name').value = d.name; document.getElementById('dr-mobile').value = d.mobile;
   document.getElementById('dr-lic').value = d.lic; document.getElementById('dr-lic-exp').value = d.licExp;
-  document.getElementById('dr-aadhar').value = d.aadhar; document.getElementById('dr-salary').value = d.salary;
+  document.getElementById('dr-aadhar').value = d.aadhar;
   document.getElementById('dr-address').value = d.address; document.getElementById('dr-ec-name').value = d.ecName;
   document.getElementById('dr-ec-mobile').value = d.ecMobile;
+  document.getElementById('dr-salary-type').value = d.salaryType || 'fixed';
+  document.getElementById('dr-salary').value = d.salary || '';
+  document.getElementById('dr-per-trip-rate').value = d.perTripRate || '';
+  document.getElementById('dr-per-km-rate').value = d.perKmRate || '';
+  toggleSalaryFields();
   _show('driver');
 }
 async function saveDriver() {
   const idx = parseInt(document.getElementById('edit-driver-index').value);
+  const salaryType = document.getElementById('dr-salary-type').value;
   const drv = {
     id: idx >= 0 ? db.drivers[idx].id : Date.now(),
     name: document.getElementById('dr-name').value, mobile: document.getElementById('dr-mobile').value,
     lic: document.getElementById('dr-lic').value, licExp: document.getElementById('dr-lic-exp').value,
     aadhar: document.getElementById('dr-aadhar').value,
+    salaryType,
     salary: parseFloat(document.getElementById('dr-salary').value) || 0,
+    perTripRate: parseFloat(document.getElementById('dr-per-trip-rate').value) || 0,
+    perKmRate: parseFloat(document.getElementById('dr-per-km-rate').value) || 0,
     address: document.getElementById('dr-address').value,
     ecName: document.getElementById('dr-ec-name').value, ecMobile: document.getElementById('dr-ec-mobile').value,
     status: idx >= 0 ? db.drivers[idx].status : 'Active',
@@ -1008,7 +1108,7 @@ async function deleteOtherExp(idx) {
   db.otherExp.splice(idx, 1); renderOtherExp();
 }
 
-/* ── CALCULATIONS (unchanged) ─────────────────────────────── */
+/* ── CALCULATIONS ─────────────────────────────────────────── */
 function calcTrip() {
   const sk=parseFloat(document.getElementById('t-start-km').value)||0;
   const ek=parseFloat(document.getElementById('t-end-km').value)||0;
@@ -1019,11 +1119,20 @@ function calcTrip() {
   const km=Math.max(0,ek-sk);
   const fuel=km>0?(km/ml)*dp:0;
   const maint=km*mk;
-  const profit=fr-fuel-maint;
+  // Auto-calculate per-km driver salary
+  const drvName=document.getElementById('t-driver')?.value;
+  const drvObj=drvName?db.drivers.find(d=>d.name===drvName):null;
+  if(drvObj&&drvObj.salaryType==='per-km'&&km>0){
+    const salEl=document.getElementById('t-trip-salary');
+    if(salEl) salEl.value=Math.round(km*(drvObj.perKmRate||0));
+  }
+  const drvSal=parseFloat(document.getElementById('t-trip-salary')?.value)||0;
+  const profit=fr-fuel-maint-drvSal;
   document.getElementById('c-km').textContent=km.toLocaleString()+' km';
   document.getElementById('c-fuel').textContent='₹'+Math.round(fuel).toLocaleString();
   document.getElementById('c-maint').textContent='₹'+Math.round(maint).toLocaleString();
-  document.getElementById('c-cost').textContent='₹'+Math.round(fuel+maint).toLocaleString();
+  document.getElementById('c-salary').textContent='₹'+Math.round(drvSal).toLocaleString();
+  document.getElementById('c-cost').textContent='₹'+Math.round(fuel+maint+drvSal).toLocaleString();
   const pe=document.getElementById('c-profit');
   pe.textContent='₹'+Math.round(profit).toLocaleString();
   pe.style.color=profit>=0?'var(--green)':'var(--red)';
@@ -1068,6 +1177,30 @@ function statusBadge(s) {
     Cancelled:'badge-red',Completed:'badge-blue',Inactive:'badge-blue'};
   return `<span class="badge ${m[s]||'badge-blue'}">${(s||'').toUpperCase()}</span>`;
 }
+function initials(value) {
+  return String(value || 'NA').split(/\s|-/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
+}
+function compactMoney(value) {
+  const n = Number(value || 0);
+  if (Math.abs(n) >= 10000000) return '₹' + (n / 10000000).toFixed(1) + 'Cr';
+  if (Math.abs(n) >= 100000) return '₹' + (n / 100000).toFixed(1) + 'L';
+  return '₹' + Math.round(n).toLocaleString('en-IN');
+}
+function animateNumber(el, value, formatter=(v)=>String(Math.round(v))) {
+  if (!el) return;
+  const start = Number(el.dataset.value || 0);
+  const end = Number(value || 0);
+  const duration = 420;
+  const t0 = performance.now();
+  el.dataset.value = end;
+  function frame(now) {
+    const p = Math.min(1, (now - t0) / duration);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = formatter(start + (end - start) * eased);
+    if (p < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
 
 /* ── RENDER DASHBOARD ─────────────────────────────────────── */
 function renderDashboard() {
@@ -1076,25 +1209,49 @@ function renderDashboard() {
   const pendingBills=db.bills.filter(b=>b.status==='Pending');
   const pendingAmt=pendingBills.reduce((s,b)=>s+(b.freight-b.deduct+b.other),0);
   const el=id=>document.getElementById(id);
-  if(el('d-active-trips')) el('d-active-trips').textContent=active;
-  if(el('d-revenue'))      el('d-revenue').textContent='₹'+(revenue/100000).toFixed(1)+'L';
-  if(el('d-pending'))      el('d-pending').textContent='₹'+(pendingAmt/100000).toFixed(1)+'L';
+  animateNumber(el('d-active-trips'), active);
+  if(el('d-active-sub'))   el('d-active-sub').textContent=active ? 'Trips currently moving or loading' : 'No live trips';
+  if(el('d-revenue'))      el('d-revenue').textContent=compactMoney(revenue);
+  if(el('d-revenue-sub'))  el('d-revenue-sub').textContent=`${db.trips.length} trip revenue records`;
+  if(el('d-pending'))      el('d-pending').textContent=compactMoney(pendingAmt);
   if(el('d-pending-sub'))  el('d-pending-sub').textContent=pendingBills.length+' invoices';
   const activeV=db.vehicles.filter(v=>v.status==='Active').length;
-  if(el('d-util')) el('d-util').textContent=db.vehicles.length>0?Math.round((activeV/db.vehicles.length)*100)+'%':'—';
+  const util=db.vehicles.length>0?Math.round((activeV/db.vehicles.length)*100):0;
+  if(el('d-util')) el('d-util').textContent=db.vehicles.length>0?util+'%':'—';
   if(el('d-util-sub')) el('d-util-sub').textContent=`${activeV} of ${db.vehicles.length} vehicles`;
+  if(el('d-util-bar')) el('d-util-bar').style.width=util+'%';
+  if(el('hero-trips')) el('hero-trips').textContent=db.trips.length;
+  if(el('hero-vehicles')) el('hero-vehicles').textContent=db.vehicles.length;
+  if(el('hero-drivers')) el('hero-drivers').textContent=db.drivers.filter(d=>d.status==='Active').length;
   if(el('qs-vehicles')) el('qs-vehicles').textContent=db.vehicles.length;
   if(el('qs-drivers'))  el('qs-drivers').textContent=db.drivers.filter(d=>d.status==='Active').length;
   if(el('qs-trips'))    el('qs-trips').textContent=db.trips.length;
-  if(el('qs-diesel'))   el('qs-diesel').textContent='₹'+db.diesel.reduce((s,d)=>s+d.amount,0).toLocaleString();
-  if(el('qs-fastag'))   el('qs-fastag').textContent='₹'+db.fastag.reduce((s,f)=>s+f.amount,0).toLocaleString();
-  if(el('qs-maint'))    el('qs-maint').textContent='₹'+db.maintenance.reduce((s,m)=>s+m.parts+m.labour,0).toLocaleString();
+  if(el('qs-diesel'))   el('qs-diesel').textContent=compactMoney(db.diesel.reduce((s,d)=>s+d.amount,0));
+  if(el('qs-fastag'))   el('qs-fastag').textContent=compactMoney(db.fastag.reduce((s,f)=>s+f.amount,0));
+  if(el('qs-maint'))    el('qs-maint').textContent=compactMoney(db.maintenance.reduce((s,m)=>s+m.parts+m.labour,0));
+  const chart=el('revenue-chart');
+  if(chart) {
+    const buckets = db.trips.slice(0,8).reverse().map(t=>t.freight || 0);
+    const values = buckets.length ? buckets : [12,18,14,26,22,32,28,38].map(x=>x*10000);
+    const max = Math.max(...values, 1);
+    chart.innerHTML = values.map((v,i)=>`<div class="chart-bar" style="height:${Math.max(16, (v/max)*100)}%" title="${compactMoney(v)}"><span>${i+1}</span></div>`).join('');
+  }
   const dash=el('dash-trips-body');
   if(dash) dash.innerHTML=db.trips.slice(0,5).map(t=>
-    `<tr><td><span class="mono text-accent">${t.num}</span></td><td>${t.vehicle}</td>
-     <td>${(t.from||'').slice(0,3).toUpperCase()}→${(t.to||'').slice(0,3).toUpperCase()}</td>
+    `<tr><td><span class="mono text-accent">${t.num}</span></td><td><div class="vehicle-cell"><span class="avatar-chip">${initials(t.vehicle)}</span>${t.vehicle}</div></td>
+     <td class="route-cell">${(t.from||'').slice(0,3).toUpperCase()} → ${(t.to||'').slice(0,3).toUpperCase()}</td>
      <td>${statusBadge(t.status)}</td></tr>`
-  ).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">No trips yet</td></tr>';
+  ).join('')||'<tr><td colspan="4" class="empty-cell">No trips yet</td></tr>';
+  const feed=el('activity-feed');
+  if(feed) {
+    const items = db.trips.slice(0,4).map(t=>({
+      title:`${t.num} ${t.status || 'updated'}`,
+      meta:`${t.vehicle || 'Vehicle'} · ${t.from || 'Origin'} to ${t.to || 'Destination'}`
+    }));
+    feed.innerHTML = (items.length ? items : [
+      {title:'No live operating events yet', meta:'Create a trip to start the activity stream'}
+    ]).map(x=>`<div class="activity-item"><span class="activity-dot"></span><div><div class="activity-title">${x.title}</div><div class="activity-meta">${x.meta}</div></div></div>`).join('');
+  }
 }
 
 /* ── RENDER TRIPS ─────────────────────────────────────────── */
@@ -1117,19 +1274,21 @@ function renderTrips() {
     const profit=t.freight-fuel-maint;
     return `<tr>
       <td><span class="mono text-accent">${t.num}</span></td>
-      <td>${t.date}</td><td>${t.vehicle}</td><td>${t.driver}</td>
-      <td>${t.from}</td><td>${t.to}</td>
+      <td>${t.date}</td>
+      <td><div class="vehicle-cell"><span class="avatar-chip">${initials(t.vehicle)}</span><span>${t.vehicle}</span></div></td>
+      <td><div class="driver-cell"><span class="avatar-chip">${initials(t.driver)}</span><span>${t.driver}</span></div></td>
+      <td class="route-cell">${t.from}</td><td class="route-cell">${t.to}</td>
       <td class="mono">${t.km.toLocaleString()}</td>
-      <td>₹${t.freight.toLocaleString()}</td>
-      <td class="text-red">₹${fuel.toLocaleString()}</td>
-      <td class="text-amber">₹${maint.toLocaleString()}</td>
-      <td class="${profit>=0?'text-green':'text-red'}">₹${profit.toLocaleString()}</td>
+      <td>${compactMoney(t.freight)}</td>
+      <td class="text-red">${compactMoney(fuel)}</td>
+      <td class="text-amber">${compactMoney(maint)}</td>
+      <td class="${profit>=0?'text-green':'text-red'}">${compactMoney(profit)}</td>
       <td>${statusBadge(t.status)}</td>
       <td><div class="action-row">
         <div class="icon-btn" onclick="editTrip(${i})" title="Edit">✎</div>
         <div class="icon-btn" onclick="confirmDelete('Delete trip ${t.num}?',()=>deleteTrip(${i}))" title="Delete">✕</div>
       </div></td></tr>`;
-  }).join('')||'<tr><td colspan="13" style="text-align:center;padding:20px;color:var(--text3)">No trips found</td></tr>';
+  }).join('')||'<tr><td colspan="13" class="empty-cell">No trips found</td></tr>';
 }
 
 /* ── RENDER EXPENSES ──────────────────────────────────────── */
@@ -1493,17 +1652,188 @@ function renderDrivers() {
   const tbody=document.getElementById('drivers-table-body'); if(!tbody) return;
   tbody.innerHTML=db.drivers.map((d,i)=>{
     const myT=db.trips.filter(t=>t.driver===d.name);
+    const completedT=myT.filter(t=>t.status==='Completed');
     const km=myT.reduce((s,t)=>s+t.km,0);
+    const earned=completedT.reduce((s,t)=>s+(t.tripSalary||0),0);
+    const advances=db.advances.filter(a=>a.driver===d.name).reduce((s,a)=>s+a.amount,0);
+    const balance=earned-advances;
+    let salaryRate='—';
+    if(d.salaryType==='per-trip') salaryRate=`₹${(d.perTripRate||0).toLocaleString()}/trip`;
+    else if(d.salaryType==='per-km') salaryRate=`₹${d.perKmRate||0}/km`;
+    else salaryRate=`₹${(d.salary||0).toLocaleString()}/mo`;
     return `<tr>
       <td><b>${d.name}</b></td><td>${d.mobile}</td><td class="mono">${d.lic}</td>
-      <td>${expiryBadge(d.licExp)}</td><td>${myT.length}</td><td class="mono">${km.toLocaleString()}</td>
-      <td>₹${(d.salary||0).toLocaleString()}</td><td class="text-muted">₹0</td>
+      <td>${expiryBadge(d.licExp)}</td>
+      <td>${completedT.length} / ${myT.length}</td>
+      <td class="mono">${km.toLocaleString()}</td>
+      <td class="mono" style="font-size:11px">${salaryRate}</td>
+      <td class="mono">₹${earned.toLocaleString()}</td>
+      <td class="mono text-red">₹${advances.toLocaleString()}</td>
+      <td class="mono ${balance>0?'text-amber':'text-green'}">₹${balance.toLocaleString()}</td>
       <td>${statusBadge(d.status)}</td>
       <td><div class="action-row">
+        <button class="btn btn-ghost btn-sm" onclick="openSalaryDetail('${d.name.replace(/'/g,"\\'")}')">₹ Salary</button>
         <div class="icon-btn" onclick="editDriver(${i})" title="Edit">✎</div>
         <div class="icon-btn" onclick="confirmDelete('Delete driver ${d.name}?',()=>deleteDriver(${i}))">✕</div>
       </div></td></tr>`;
-  }).join('')||'<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--text3)">No drivers added</td></tr>';
+  }).join('')||'<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--text3)">No drivers added</td></tr>';
+}
+
+/* ── DRIVER SALARY LEDGER ─────────────────────────────────── */
+function openSalaryDetail(driverName) {
+  document.getElementById('salary-driver-name').textContent = driverName;
+  renderSalaryModal(driverName);
+  _show('driver-salary');
+}
+
+function renderSalaryModal(driverName) {
+  const drv = db.drivers.find(d => d.name === driverName);
+  if (!drv) return;
+  const drvTrips = db.trips.filter(t => t.driver === driverName && t.status === 'Completed');
+  const drvAdvances = db.advances.filter(a => a.driver === driverName);
+  const totalEarned = drvTrips.reduce((s, t) => s + (t.tripSalary || 0), 0);
+  const totalAdvances = drvAdvances.reduce((s, a) => s + a.amount, 0);
+  const paidOut = drvTrips.filter(t => t.driverSalaryPaid).reduce((s, t) => s + (t.tripSalary || 0), 0);
+  const balance = totalEarned - totalAdvances;
+  const netPayable = balance - paidOut;
+
+  let salaryTypeLabel = 'Fixed Monthly';
+  let salaryRateText = `₹${(drv.salary||0).toLocaleString()} / month`;
+  if (drv.salaryType === 'per-trip') { salaryTypeLabel = 'Per Trip Rate'; salaryRateText = `₹${(drv.perTripRate||0).toLocaleString()} / trip`; }
+  else if (drv.salaryType === 'per-km') { salaryTypeLabel = 'Per KM Rate'; salaryRateText = `₹${drv.perKmRate||0} / km`; }
+
+  const summaryEl = document.getElementById('salary-summary-html');
+  if (summaryEl) summaryEl.innerHTML = `
+    <div class="stat-grid" style="grid-template-columns:repeat(5,1fr);margin-bottom:12px">
+      <div class="stat-card">
+        <div class="stat-label">SALARY TYPE</div>
+        <div class="stat-value" style="font-size:16px">${salaryTypeLabel}</div>
+        <div class="stat-sub" style="color:var(--text3)">${salaryRateText}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">TOTAL EARNED</div>
+        <div class="stat-value text-green" style="font-size:22px">₹${totalEarned.toLocaleString()}</div>
+        <div class="stat-sub" style="color:var(--text3)">${drvTrips.length} completed trip(s)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">TOTAL ADVANCES</div>
+        <div class="stat-value text-red" style="font-size:22px">₹${totalAdvances.toLocaleString()}</div>
+        <div class="stat-sub" style="color:var(--text3)">${drvAdvances.length} advance record(s)</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">ALREADY PAID OUT</div>
+        <div class="stat-value" style="font-size:22px">₹${paidOut.toLocaleString()}</div>
+        <div class="stat-sub" style="color:var(--text3)">Marked as paid</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">NET STILL PAYABLE</div>
+        <div class="stat-value ${netPayable > 0 ? 'text-red' : 'text-green'}" style="font-size:22px">₹${netPayable.toLocaleString()}</div>
+        <div class="stat-sub" style="color:var(--text3)">To pay driver</div>
+      </div>
+    </div>
+    <div style="background:var(--bg2);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text2);margin-bottom:4px">
+      <b>How balance works:</b> Earned (₹${totalEarned.toLocaleString()}) – All Advances (₹${totalAdvances.toLocaleString()}) = Balance (₹${balance.toLocaleString()}) | Paid Out so far: ₹${paidOut.toLocaleString()} | <b>Still to pay: ₹${netPayable.toLocaleString()}</b>
+    </div>`;
+
+  const tbody = document.getElementById('salary-trips-body');
+  if (tbody) tbody.innerHTML = drvTrips.map(t => {
+    const tripAdv = drvAdvances.filter(a => a.trip === t.num).reduce((s, a) => s + a.amount, 0);
+    const netDue = (t.tripSalary || 0) - tripAdv;
+    const tripIdx = db.trips.indexOf(t);
+    const driverNameEsc = driverName.replace(/'/g, "\\'");
+    return `<tr>
+      <td><span class="mono text-accent">${t.num}</span></td>
+      <td>${t.date}</td><td>${t.from}→${t.to}</td>
+      <td class="mono">${t.km.toLocaleString()} km</td>
+      <td class="mono">₹${(t.tripSalary||0).toLocaleString()}</td>
+      <td class="mono text-red">₹${tripAdv.toLocaleString()}</td>
+      <td class="mono ${netDue > 0 ? 'text-amber' : ''}">₹${netDue.toLocaleString()}</td>
+      <td>${t.driverSalaryPaid ? '<span class="badge badge-green">PAID</span>' : '<span class="badge badge-amber">PENDING</span>'}</td>
+      <td><div class="action-row">
+        ${t.driverSalaryPaid
+          ? `<button class="btn btn-ghost btn-sm" onclick="undoTripSalaryPaid(${tripIdx},'${driverNameEsc}')">↩ Undo</button>`
+          : `<button class="btn btn-primary btn-sm" onclick="markTripSalaryPaid(${tripIdx},'${driverNameEsc}')">Mark Paid</button>`}
+        <button class="btn btn-ghost btn-sm" onclick="openNewAdvance('${driverNameEsc}','${t.num}')">+ Adv</button>
+      </div></td></tr>`;
+  }).join('') || '<tr><td colspan="9" style="text-align:center;padding:14px;color:var(--text3)">No completed trips</td></tr>';
+
+  const advBody = document.getElementById('salary-advances-body');
+  if (advBody) advBody.innerHTML = drvAdvances.map(a => {
+    const driverNameEsc = driverName.replace(/'/g, "\\'");
+    return `<tr>
+      <td>${a.date}</td>
+      <td class="mono text-accent">${a.trip || '—'}</td>
+      <td class="text-red mono">₹${a.amount.toLocaleString()}</td>
+      <td>${a.note || '—'}</td>
+      <td><div class="action-row">
+        <div class="icon-btn" onclick="deleteAdvanceFromModal(${a.id},'${driverNameEsc}')">✕</div>
+      </div></td></tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;padding:14px;color:var(--text3)">No advances recorded</td></tr>';
+}
+
+function openNewAdvance(driverName, tripNum) {
+  document.getElementById('edit-adv-id').value = '-1';
+  document.getElementById('adv-modal-title').textContent = 'Record Driver Advance';
+  document.getElementById('adv-date').value = today();
+  document.getElementById('adv-amount').value = '';
+  document.getElementById('adv-note').value = '';
+  const driverSel = document.getElementById('adv-driver');
+  if (driverSel) {
+    driverSel.innerHTML = db.drivers.map(d => `<option value="${d.name}">${d.name}</option>`).join('');
+    if (driverName) driverSel.value = driverName;
+  }
+  const tripSel = document.getElementById('adv-trip');
+  if (tripSel) {
+    tripSel.innerHTML = '<option value="">— None —</option>' +
+      db.trips.map(t => `<option value="${t.num}">${t.num} — ${t.from}→${t.to}</option>`).join('');
+    if (tripNum) tripSel.value = tripNum;
+  }
+  _show('driver-advance');
+}
+
+async function saveAdvance() {
+  const adv = {
+    id: Date.now(),
+    date: document.getElementById('adv-date').value,
+    driver: document.getElementById('adv-driver').value,
+    trip: document.getElementById('adv-trip').value || '',
+    amount: parseFloat(document.getElementById('adv-amount').value) || 0,
+    note: document.getElementById('adv-note').value,
+  };
+  const ok = await dbUpsert('driver_advances', advanceToDb(adv));
+  if (!ok) return;
+  db.advances.unshift(adv);
+  closeModal('driver-advance');
+  const salaryModal = document.getElementById('modal-driver-salary');
+  if (salaryModal && !salaryModal.classList.contains('hidden'))
+    renderSalaryModal(document.getElementById('salary-driver-name').textContent);
+  renderDrivers();
+}
+
+async function deleteAdvanceFromModal(advId, driverName) {
+  const idx = db.advances.findIndex(a => a.id === advId);
+  if (idx < 0) return;
+  const ok = await dbDelete('driver_advances', advId);
+  if (!ok) return;
+  db.advances.splice(idx, 1);
+  renderSalaryModal(driverName);
+  renderDrivers();
+}
+
+async function markTripSalaryPaid(tripIdx, driverName) {
+  const trip = db.trips[tripIdx]; if (!trip) return;
+  trip.driverSalaryPaid = true;
+  const ok = await dbUpsert('trips', tripToDb(trip));
+  if (!ok) { trip.driverSalaryPaid = false; return; }
+  renderSalaryModal(driverName); renderDrivers();
+}
+
+async function undoTripSalaryPaid(tripIdx, driverName) {
+  const trip = db.trips[tripIdx]; if (!trip) return;
+  trip.driverSalaryPaid = false;
+  const ok = await dbUpsert('trips', tripToDb(trip));
+  if (!ok) { trip.driverSalaryPaid = true; return; }
+  renderSalaryModal(driverName); renderDrivers();
 }
 
 /* ── RENDER TRANSPORTERS ──────────────────────────────────── */
@@ -1587,7 +1917,7 @@ function renderPnL() {
   const toll=db.fastag.reduce((s,f)=>s+(f.amount||0),0);
   const adbl=db.adblue.reduce((s,a)=>s+(a.amount||0),0);
   const mnt=db.maintenance.reduce((s,m)=>s+m.parts+m.labour,0);
-  const sal=db.drivers.reduce((s,d)=>s+(d.salary||0),0);
+  const sal=db.trips.filter(t=>t.status==='Completed').reduce((s,t)=>s+(t.tripSalary||0),0);
   const emi=db.loans.filter(l=>l.status==='Active').reduce((s,l)=>s+l.emi,0);
   const oth=db.otherExp.reduce((s,e)=>s+(e.amount||0),0);
   const exp=fuel+toll+adbl+mnt+sal+emi+oth;
@@ -1620,13 +1950,15 @@ function renderTripSummary() {
     const maint=Math.round(t.km*t.maintKm);
     const toll=db.fastag.filter(f=>f.trip===t.num).reduce((s,f)=>s+(f.amount||0),0);
     const misc=db.otherExp.filter(e=>e.trip===t.num).reduce((s,e)=>s+(e.amount||0),0);
-    const profit=t.freight-fuel-maint-toll-misc;
+    const drvSal=t.tripSalary||0;
+    const profit=t.freight-fuel-maint-toll-misc-drvSal;
     const margin=t.freight>0?Math.round((profit/t.freight)*100):0;
     return `<tr>
       <td><span class="mono text-accent">${t.num}</span></td><td>${t.vehicle}</td><td>${t.from}→${t.to}</td>
       <td class="mono">${t.km.toLocaleString()}</td><td>₹${t.freight.toLocaleString()}</td>
       <td class="text-red">₹${fuel.toLocaleString()}</td><td class="text-red">₹${toll.toLocaleString()}</td>
       <td class="text-red">₹${misc.toLocaleString()}</td>
+      <td class="text-red">₹${drvSal.toLocaleString()}</td>
       <td class="${profit>=0?'text-green':'text-red'}">₹${profit.toLocaleString()}</td>
       <td><span class="badge ${margin>=15?'badge-green':margin>=0?'badge-amber':'badge-red'}">${margin}%</span></td></tr>`;
   }).join('')||'<tr><td colspan="10" style="text-align:center;padding:14px;color:var(--text3)">No data</td></tr>';
@@ -1650,13 +1982,26 @@ function renderDriverSummary() {
   const tbody=document.getElementById('driver-sum-body'); if(!tbody) return;
   tbody.innerHTML=db.drivers.map(d=>{
     const dT=db.trips.filter(t=>t.driver===d.name);
+    const completedT=dT.filter(t=>t.status==='Completed');
     const km=dT.reduce((s,t)=>s+t.km,0);
-    const adv=db.otherExp.filter(e=>e.cat==='Driver Advance'&&dT.some(t=>t.vehicle===e.vehicle)).reduce((s,e)=>s+(e.amount||0),0);
-    const bal=(d.salary||0)-adv;
+    const earned=completedT.reduce((s,t)=>s+(t.tripSalary||0),0);
+    const adv=db.advances.filter(a=>a.driver===d.name).reduce((s,a)=>s+a.amount,0);
+    const bal=earned-adv;
     return `<tr><td><b>${d.name}</b></td><td>${dT.length}</td><td class="mono">${km.toLocaleString()}</td>
-      <td>₹${(d.salary||0).toLocaleString()}</td><td>₹${adv.toLocaleString()}</td>
+      <td>₹${(d.salary||0).toLocaleString()}/trip</td><td>₹${earned.toLocaleString()}</td><td>₹${adv.toLocaleString()}</td>
       <td class="${bal>=0?'text-green':'text-red'}">₹${Math.abs(bal).toLocaleString()} ${bal>=0?'cr':'db'}</td></tr>`;
   }).join('');
+}
+function renderDriverSalaries() {
+  const tbody=document.getElementById('driver-sal-body'); if(!tbody) return;
+  const rows=db.trips.filter(t=>(t.tripSalary||0)>0);
+  tbody.innerHTML=rows.map(t=>`<tr>
+    <td>${t.date}</td><td><span class="mono text-accent">${t.num}</span></td>
+    <td><b>${t.driver}</b></td><td>${t.vehicle}</td>
+    <td>${t.from}→${t.to}</td>
+    <td class="text-red mono">₹${(t.tripSalary||0).toLocaleString()}</td>
+    <td>${statusBadge(t.status)}</td></tr>`
+  ).join('')||'<tr><td colspan="7" style="text-align:center;padding:14px;color:var(--text3)">No driver salary entries</td></tr>';
 }
 function renderTransporterSummary() {
   const tbody=document.getElementById('transporter-sum-body'); if(!tbody) return;
@@ -1686,7 +2031,8 @@ function renderMonthlyReport() {
 /* ── TAB HELPERS ──────────────────────────────────────────── */
 function setExpenseTab(el,tab){
   document.querySelectorAll('#page-expenses .tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
-  ['diesel','fastag','adblue','other'].forEach(t=>{const e=document.getElementById('exp-'+t);if(e)e.classList.toggle('hidden',t!==tab);});
+  ['diesel','fastag','adblue','other','driver-sal'].forEach(t=>{const e=document.getElementById('exp-'+t);if(e)e.classList.toggle('hidden',t!==tab);});
+  if(tab==='driver-sal') renderDriverSalaries();
 }
 function setLoanTab(el,tab){
   document.querySelectorAll('#page-loans .tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
@@ -1707,12 +2053,12 @@ async function clearAllData() {
     showLoading(true, 'Clearing all data…');
     const tables = ['trips','vehicles','drivers','transporters','bills','maintenance',
                     'loans','private_loans','repayments','diesel_expenses',
-                    'fastag_expenses','adblue_expenses','other_expenses','bill_payments'];
+                    'fastag_expenses','adblue_expenses','other_expenses','bill_payments','driver_advances'];
     await Promise.all(tables.map(t => sb.from(t).delete().neq('id', -1)));
     await sb.from('settings').upsert([{key:'trip_counter',value:'1'},{key:'bill_counter',value:'1'}]);
     db = { trips:[],vehicles:[],drivers:[],transporters:[],bills:[],maintenance:[],
            loans:[],privateLoans:[],repayments:[],diesel:[],fastag:[],adblue:[],otherExp:[],
-           payments:[],
+           payments:[],advances:[],
            tripCounter:1, billCounter:1 };
     showLoading(false);
     populateSelects(); showPage('dashboard');
