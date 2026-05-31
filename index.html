@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>FleetOps TMS — Transport Management System</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
   /* ── Loading Overlay ── */
@@ -88,52 +88,73 @@
 <div class="app">
 
   <!-- SIDEBAR -->
-  <div class="sidebar">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-glow"></div>
     <div class="logo">
       <div class="logo-icon">FO</div>
-      <div>
+      <div class="brand-copy">
         <div class="logo-text">FleetOps</div>
-        <div class="logo-sub">TMS v2.2</div>
+        <div class="logo-sub">Enterprise TMS</div>
+      </div>
+      <button class="sidebar-toggle" type="button" onclick="toggleSidebar()" title="Collapse sidebar">‹</button>
+    </div>
+    <div class="workspace-card">
+      <div class="workspace-avatar">AX</div>
+      <div class="workspace-copy">
+        <input class="workspace-name workspace-input" id="workspace-name" aria-label="Workspace name" spellcheck="false" title="Edit workspace name" value="Apex Logistics">
+        <div class="workspace-meta"><span class="live-dot"></span>Ops command live</div>
       </div>
     </div>
     <nav class="nav">
       <div class="nav-section">Overview</div>
-      <div class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">▦</span>Dashboard</div>
+      <div class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">⌁</span><span class="nav-label">Dashboard</span></div>
 
       <div class="nav-section">Operations</div>
-      <div class="nav-item" onclick="showPage('trips')"><span class="nav-icon">⊕</span>Trips</div>
-      <div class="nav-item" onclick="showPage('expenses')"><span class="nav-icon">◈</span>Expenses</div>
-      <div class="nav-item" onclick="showPage('billing')"><span class="nav-icon">◻</span>Billing</div>
-      <div class="nav-item" onclick="showPage('maintenance')"><span class="nav-icon">⚙</span>Maintenance<span class="nav-badge">2</span></div>
+      <div class="nav-item" onclick="showPage('trips')"><span class="nav-icon">↗</span><span class="nav-label">Trips</span></div>
+      <div class="nav-item" onclick="showPage('expenses')"><span class="nav-icon">◈</span><span class="nav-label">Expenses</span></div>
+      <div class="nav-item" onclick="showPage('billing')"><span class="nav-icon">▣</span><span class="nav-label">Billing</span></div>
+      <div class="nav-item" onclick="showPage('maintenance')"><span class="nav-icon">⚙</span><span class="nav-label">Maintenance</span></div>
 
       <div class="nav-section">Data</div>
-      <div class="nav-item" onclick="showPage('vehicles')"><span class="nav-icon">◈</span>Vehicles</div>
-      <div class="nav-item" onclick="showPage('drivers')"><span class="nav-icon">◉</span>Drivers</div>
-      <div class="nav-item" onclick="showPage('transporters')"><span class="nav-icon">◎</span>Transporters</div>
+      <div class="nav-item" onclick="showPage('vehicles')"><span class="nav-icon">▰</span><span class="nav-label">Vehicles</span></div>
+      <div class="nav-item" onclick="showPage('drivers')"><span class="nav-icon">◎</span><span class="nav-label">Drivers</span></div>
+      <div class="nav-item" onclick="showPage('transporters')"><span class="nav-icon">◇</span><span class="nav-label">Transporters</span></div>
 
       <div class="nav-section">Finance</div>
-      <div class="nav-item" onclick="showPage('loans')"><span class="nav-icon">◆</span>Loans</div>
-      <div class="nav-item" onclick="showPage('payments')"><span class="nav-icon">◑</span>Payments</div>
-      <div class="nav-item" onclick="showPage('summary')"><span class="nav-icon">◧</span>Summary</div>
-      <div class="nav-item" onclick="showPage('reports')"><span class="nav-icon">▤</span>Reports</div>
+      <div class="nav-item" onclick="showPage('loans')"><span class="nav-icon">◆</span><span class="nav-label">Loans</span></div>
+      <div class="nav-item" onclick="showPage('payments')"><span class="nav-icon">◐</span><span class="nav-label">Payments</span></div>
+      <div class="nav-item" onclick="showPage('summary')"><span class="nav-icon">▤</span><span class="nav-label">Summary</span></div>
+      <div class="nav-item" onclick="showPage('reports')"><span class="nav-icon">▥</span><span class="nav-label">Reports</span></div>
     </nav>
     <div class="sidebar-footer">
-      <div style="font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace">SUPABASE CONNECTED</div>
-      <div style="font-size:10px;color:var(--green);margin-top:2px" id="sb-status">● Live</div>
-      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
-        <div style="font-size:12px;color:var(--text2);font-weight:500">Admin User</div>
-        <div style="font-size:11px;color:var(--text3);cursor:pointer;margin-top:6px" onclick="clearAllData()">🗑 Clear all data</div>
-        <div style="font-size:11px;color:var(--text3);cursor:pointer;margin-top:4px" onclick="resetDemoData()">↺ Reset demo data</div>
-        <div style="font-size:11px;color:var(--text3);cursor:pointer;margin-top:4px" onclick="doLogout()">Sign out →</div>
+      <div class="system-pill"><span class="live-dot"></span><span id="sb-status">Live</span></div>
+      <div class="profile-card">
+        <div class="profile-avatar">AU</div>
+        <div class="profile-copy">
+          <div class="profile-name">Admin User</div>
+          <div class="profile-role">Operations lead</div>
+        </div>
+      </div>
+      <div class="sidebar-actions">
+        <button type="button" onclick="clearAllData()">Clear data</button>
+        <button type="button" onclick="resetDemoData()">Reset demo</button>
+        <button type="button" onclick="doLogout()">Sign out</button>
       </div>
     </div>
-  </div>
+  </aside>
 
   <!-- MAIN CONTENT -->
   <div class="main">
     <div class="topbar">
-      <span class="topbar-title" id="page-title">Dashboard</span>
-      <input class="topbar-search" placeholder="Search trips, vehicles, drivers..." />
+      <div class="topbar-heading">
+        <div class="topbar-eyebrow">Mission Control</div>
+        <span class="topbar-title" id="page-title">Dashboard</span>
+      </div>
+      <div class="search-shell">
+        <span class="search-icon">⌕</span>
+        <input class="topbar-search" placeholder="Search trips, vehicles, drivers..." />
+        <kbd>Ctrl K</kbd>
+      </div>
       <button class="btn btn-ghost btn-sm" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme">☀ Light</button>
       <div class="export-wrapper">
         <button class="btn btn-ghost btn-sm" onclick="toggleExportMenu(event)">↓ Export CSV ▾</button>
@@ -155,76 +176,112 @@
           <div class="export-item export-all" onclick="exportCSV('all')">⬇ Export All Sections</div>
         </div>
       </div>
+      <button class="btn btn-ghost btn-sm topbar-icon" type="button" title="Notifications">◌<span class="notify-dot"></span></button>
       <button class="btn btn-primary btn-sm" id="topbar-action" onclick="handleTopAction()">+ New Trip</button>
     </div>
 
     <div class="content" id="content">
 
       <!-- ========== DASHBOARD ========== -->
-      <div id="page-dashboard">
+      <div id="page-dashboard" class="dashboard-page">
+        <section class="ops-hero">
+          <div>
+            <div class="eyebrow">Fleet Operations Command</div>
+            <h1>Enterprise logistics health at a glance.</h1>
+            <p>Live revenue, utilization, trip execution, and finance exposure across the operating network.</p>
+          </div>
+          <div class="hero-metrics">
+            <div><span id="hero-trips">—</span><small>Trips</small></div>
+            <div><span id="hero-vehicles">—</span><small>Fleet</small></div>
+            <div><span id="hero-drivers">—</span><small>Drivers</small></div>
+          </div>
+        </section>
         <div class="stat-grid">
-          <div class="stat-card">
-            <div class="stat-label">Active Trips</div>
+          <div class="stat-card metric-active">
+            <div class="stat-top"><div class="stat-label">Active Trips</div><span class="trend-pill trend-up">Live</span></div>
             <div class="stat-value" id="d-active-trips">—</div>
             <div class="stat-sub stat-up" id="d-active-sub">Loading…</div>
+            <div class="mini-chart"><span style="height:42%"></span><span style="height:74%"></span><span style="height:54%"></span><span style="height:82%"></span><span style="height:68%"></span><span style="height:92%"></span></div>
           </div>
-          <div class="stat-card">
-            <div class="stat-label">Revenue MTD</div>
-            <div class="stat-value" style="color:var(--accent)" id="d-revenue">—</div>
-            <div class="stat-sub stat-up">All trips</div>
+          <div class="stat-card metric-revenue">
+            <div class="stat-top"><div class="stat-label">Revenue MTD</div><span class="trend-pill trend-up" id="d-revenue-trend">+0%</span></div>
+            <div class="stat-value text-accent" id="d-revenue">—</div>
+            <div class="stat-sub stat-up" id="d-revenue-sub">All trips</div>
+            <div class="sparkline"></div>
           </div>
-          <div class="stat-card">
-            <div class="stat-label">Fleet Utilization</div>
+          <div class="stat-card metric-util">
+            <div class="stat-top"><div class="stat-label">Fleet Utilization</div><span class="trend-pill">Capacity</span></div>
             <div class="stat-value" id="d-util">—</div>
-            <div class="stat-sub" style="color:var(--text3)" id="d-util-sub">Loading…</div>
+            <div class="stat-sub" id="d-util-sub">Loading…</div>
+            <div class="progress-track"><span id="d-util-bar"></span></div>
           </div>
-          <div class="stat-card">
-            <div class="stat-label">Pending Bills</div>
-            <div class="stat-value" style="color:var(--red)" id="d-pending">—</div>
+          <div class="stat-card metric-risk">
+            <div class="stat-top"><div class="stat-label">Pending Bills</div><span class="trend-pill trend-down">AR</span></div>
+            <div class="stat-value text-red" id="d-pending">—</div>
             <div class="stat-sub stat-down" id="d-pending-sub">Loading…</div>
+            <div class="risk-band"><span></span><span></span><span></span></div>
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-          <div class="table-card">
-            <div class="table-header">
-              <span class="table-title">Recent Trips</span>
+        <div class="dashboard-grid">
+          <div class="analytics-panel revenue-panel">
+            <div class="panel-header">
+              <div><span class="table-title">Monthly Performance</span><p>Revenue, cost pressure, and operating margin</p></div>
+              <span class="chip">MTD</span>
             </div>
-            <table class="table">
-              <thead><tr><th>Trip#</th><th>Vehicle</th><th>Route</th><th>Status</th></tr></thead>
-              <tbody id="dash-trips-body"><tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">Loading…</td></tr></tbody>
+            <div class="chart-shell" id="revenue-chart"></div>
+          </div>
+          <div class="analytics-panel insights-panel">
+            <div class="panel-header">
+              <div><span class="table-title">Operational Insights</span><p>Fleet, driver, and expense signals</p></div>
+            </div>
+            <div class="insight-list">
+              <div class="pl-row"><span>Total Vehicles</span><span class="mono" id="qs-vehicles">—</span></div>
+              <div class="pl-row"><span>Active Drivers</span><span class="mono" id="qs-drivers">—</span></div>
+              <div class="pl-row"><span>Total Trips</span><span class="mono" id="qs-trips">—</span></div>
+              <div class="pl-row"><span>Diesel Cost</span><span class="mono text-red" id="qs-diesel">—</span></div>
+              <div class="pl-row"><span>Fastag Cost</span><span class="mono text-red" id="qs-fastag">—</span></div>
+              <div class="pl-row"><span>Maintenance Cost</span><span class="mono text-amber" id="qs-maint">—</span></div>
+            </div>
+          </div>
+          <div class="analytics-panel recent-panel">
+            <div class="panel-header">
+              <div><span class="table-title">Recent Trips</span><p>Latest execution activity</p></div>
+              <button class="btn btn-ghost btn-sm" onclick="showPage('trips')">View all</button>
+            </div>
+            <table class="table compact-table">
+              <thead><tr><th>Trip</th><th>Vehicle</th><th>Route</th><th>Status</th></tr></thead>
+              <tbody id="dash-trips-body"><tr><td colspan="4" class="empty-cell">Loading…</td></tr></tbody>
             </table>
           </div>
-          <div class="table-card">
-            <div class="table-header"><span class="table-title">Quick Stats</span></div>
-            <div style="padding:12px">
-              <div class="pl-row"><span class="text-muted">Total Vehicles</span><span class="mono" id="qs-vehicles">—</span></div>
-              <div class="pl-row"><span class="text-muted">Active Drivers</span><span class="mono" id="qs-drivers">—</span></div>
-              <div class="pl-row"><span class="text-muted">Total Trips</span><span class="mono" id="qs-trips">—</span></div>
-              <div class="pl-row"><span class="text-muted">Total Diesel Cost</span><span class="mono text-red" id="qs-diesel">—</span></div>
-              <div class="pl-row"><span class="text-muted">Total Fastag Cost</span><span class="mono text-red" id="qs-fastag">—</span></div>
-              <div class="pl-row"><span class="text-muted">Maintenance Cost</span><span class="mono text-amber" id="qs-maint">—</span></div>
+          <div class="analytics-panel activity-panel">
+            <div class="panel-header">
+              <div><span class="table-title">Activity Feed</span><p>Real-time operation pulse</p></div>
             </div>
+            <div class="activity-feed" id="activity-feed"></div>
           </div>
         </div>
       </div>
 
       <!-- ========== TRIPS ========== -->
       <div id="page-trips" class="hidden">
-        <div class="table-card">
+        <div class="table-card trips-workspace">
           <div class="table-header">
-            <span class="table-title">All Trips <span class="table-count" id="trip-count"></span></span>
-            <div style="display:flex;gap:8px;align-items:center">
-              <input id="trip-search" placeholder="Search…" style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px;width:140px" oninput="renderTrips()">
-              <select id="trip-status-filter" onchange="renderTrips()" style="padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px">
+            <div>
+              <span class="table-title">Trip Operations <span class="table-count" id="trip-count"></span></span>
+              <p class="table-subtitle">Dispatch, margin, route, and execution status</p>
+            </div>
+            <div class="filter-bar">
+              <input id="trip-search" class="filter-input" placeholder="Search trips..." oninput="renderTrips()">
+              <select id="trip-status-filter" class="filter-select" onchange="renderTrips()">
                 <option value="">All Status</option><option>Running</option><option>Completed</option><option>Loading</option><option>Cancelled</option>
               </select>
-              <select id="trip-vehicle-filter" onchange="renderTrips()" style="padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px">
+              <select id="trip-vehicle-filter" class="filter-select" onchange="renderTrips()">
                 <option value="">All Vehicles</option>
               </select>
             </div>
           </div>
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
           <table class="table">
             <thead><tr><th>Trip#</th><th>Date</th><th>Vehicle</th><th>Driver</th><th>From</th><th>To</th><th>KM</th><th>Freight</th><th>Fuel Cost</th><th>Maint Cost</th><th>Profit</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody id="trips-table-body"></tbody>
@@ -242,6 +299,7 @@
               <div class="tab" onclick="setExpenseTab(this,'fastag')">Fastag</div>
               <div class="tab" onclick="setExpenseTab(this,'adblue')">Adblue</div>
               <div class="tab" onclick="setExpenseTab(this,'other')">Other</div>
+              <div class="tab" onclick="setExpenseTab(this,'driver-sal')">Driver Salaries</div>
             </div>
             <div style="display:flex;gap:8px">
               <button class="btn btn-ghost btn-sm" onclick="openNewExpenseFastag()">+ Fastag</button>
@@ -268,6 +326,10 @@
           <div id="exp-other" class="hidden">
             <table class="table"><thead><tr><th>Date</th><th>Vehicle</th><th>Trip#</th><th>Category</th><th>Description</th><th>Amount</th><th>Actions</th></tr></thead>
             <tbody id="other-table-body"></tbody></table>
+          </div>
+          <div id="exp-driver-sal" class="hidden">
+            <table class="table"><thead><tr><th>Date</th><th>Trip#</th><th>Driver</th><th>Vehicle</th><th>Route</th><th>Salary</th><th>Status</th></tr></thead>
+            <tbody id="driver-sal-body"></tbody></table>
           </div>
         </div>
       </div>
@@ -321,12 +383,18 @@
 
       <!-- ========== DRIVERS ========== -->
       <div id="page-drivers" class="hidden">
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px">
+          <button class="btn btn-ghost btn-sm" onclick="openNewAdvance(null)">+ Give Advance</button>
+          <button class="btn btn-primary btn-sm" onclick="openNewDriver()">+ Add Driver</button>
+        </div>
         <div class="table-card">
-          <div class="table-header"><span class="table-title">Drivers</span></div>
+          <div class="table-header"><span class="table-title">Drivers — Salary Ledger</span></div>
+          <div style="overflow-x:auto">
           <table class="table">
-            <thead><tr><th>Name</th><th>Mobile</th><th>License</th><th>Lic. Expiry</th><th>Trips</th><th>Total KM</th><th>Salary</th><th>Advance</th><th>Status</th><th>Actions</th></tr></thead>
+            <thead><tr><th>NAME</th><th>MOBILE</th><th>LICENSE</th><th>LIC. EXPIRY</th><th>TRIPS (DONE)</th><th>TOTAL KM</th><th>SALARY RATE</th><th>EARNED</th><th>ADVANCES</th><th>BALANCE</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
             <tbody id="drivers-table-body"></tbody>
           </table>
+          </div>
         </div>
       </div>
 
@@ -500,9 +568,9 @@
               <div style="text-align:center;padding:24px 0" id="pnl-result"></div>
             </div>
           </div>
-          <div id="sum-trip-sum" class="hidden"><div style="overflow-x:auto"><table class="table"><thead><tr><th>Trip#</th><th>Vehicle</th><th>Route</th><th>KM</th><th>Freight</th><th>Fuel</th><th>Toll</th><th>Misc</th><th>Profit</th><th>Margin</th></tr></thead><tbody id="trip-sum-body"></tbody></table></div></div>
+          <div id="sum-trip-sum" class="hidden"><div style="overflow-x:auto"><table class="table"><thead><tr><th>Trip#</th><th>Vehicle</th><th>Route</th><th>KM</th><th>Freight</th><th>Fuel</th><th>Toll</th><th>Misc</th><th>Driver Sal</th><th>Profit</th><th>Margin</th></tr></thead><tbody id="trip-sum-body"></tbody></table></div></div>
           <div id="sum-vehicle-sum" class="hidden"><table class="table"><thead><tr><th>Vehicle</th><th>Trips</th><th>Total KM</th><th>Revenue</th><th>Fuel Cost</th><th>Maint Cost</th><th>Profit</th><th>Margin</th></tr></thead><tbody id="vehicle-sum-body"></tbody></table></div>
-          <div id="sum-driver-sum" class="hidden"><table class="table"><thead><tr><th>Driver</th><th>Trips</th><th>Total KM</th><th>Salary</th><th>Advance</th><th>Balance</th></tr></thead><tbody id="driver-sum-body"></tbody></table></div>
+          <div id="sum-driver-sum" class="hidden"><table class="table"><thead><tr><th>Driver</th><th>Trips</th><th>Total KM</th><th>Rate/Trip</th><th>Earned</th><th>Advance</th><th>Balance</th></tr></thead><tbody id="driver-sum-body"></tbody></table></div>
           <div id="sum-transporter-sum" class="hidden"><table class="table"><thead><tr><th>Transporter</th><th>Trips</th><th>Billed</th><th>Received</th><th>Pending</th></tr></thead><tbody id="transporter-sum-body"></tbody></table></div>
         </div>
       </div>
@@ -555,7 +623,7 @@
         <div class="form-group"><label>Trip #</label><input id="t-num" readonly style="opacity:.6"></div>
         <div class="form-group"><label>Date</label><input type="date" id="t-date"></div>
         <div class="form-group"><label>Vehicle</label><select id="t-vehicle"></select></div>
-        <div class="form-group"><label>Driver</label><select id="t-driver"></select></div>
+        <div class="form-group"><label>Driver</label><select id="t-driver" onchange="onDriverChange()"></select></div>
         <div class="form-group form-full"><label>Transporter</label><select id="t-transporter"></select></div>
         <div class="form-group"><label>From</label><input id="t-from" placeholder="Chennai"></div>
         <div class="form-group"><label>To</label><input id="t-to" placeholder="Mumbai"></div>
@@ -565,6 +633,7 @@
         <div class="form-group"><label>Mileage (km/L)</label><input type="number" id="t-mileage" oninput="calcTrip()" step="0.1" value="4.2"></div>
         <div class="form-group"><label>Diesel Price (₹/L)</label><input type="number" id="t-dprice" oninput="calcTrip()" step="0.5" value="94.50"></div>
         <div class="form-group"><label>Maint ₹/km</label><input type="number" id="t-maint-km" oninput="calcTrip()" step="0.1" value="1.8"></div>
+        <div class="form-group"><label>Driver Salary (₹)</label><input type="number" id="t-trip-salary" oninput="calcTrip()" placeholder="0" min="0"></div>
         <div class="form-group"><label>Status</label><select id="t-status"><option>Running</option><option>Loading</option><option>Completed</option><option>Cancelled</option></select></div>
         <div class="form-group form-full"><label>Notes</label><textarea id="t-notes" rows="2"></textarea></div>
       </div>
@@ -572,6 +641,7 @@
         <div class="calc-row"><span class="calc-label">Distance</span><span class="calc-val" id="c-km">0 km</span></div>
         <div class="calc-row"><span class="calc-label">Est. Fuel Cost</span><span class="calc-val" id="c-fuel">₹0</span></div>
         <div class="calc-row"><span class="calc-label">Est. Maint Cost</span><span class="calc-val" id="c-maint">₹0</span></div>
+        <div class="calc-row"><span class="calc-label">Driver Salary</span><span class="calc-val" id="c-salary">₹0</span></div>
         <div class="calc-row"><span class="calc-label">Total Cost</span><span class="calc-val" id="c-cost">₹0</span></div>
         <div class="calc-row calc-total"><span class="calc-label">Est. Profit</span><span class="calc-val" id="c-profit" style="color:var(--green)">₹0</span></div>
       </div>
@@ -623,10 +693,39 @@
         <div class="form-group"><label>License No</label><input id="dr-lic" placeholder="TN2012345678"></div>
         <div class="form-group"><label>License Expiry</label><input type="date" id="dr-lic-exp"></div>
         <div class="form-group"><label>Aadhar No</label><input id="dr-aadhar" placeholder="1234 5678 9012"></div>
-        <div class="form-group"><label>Monthly Salary (₹)</label><input type="number" id="dr-salary" placeholder="16000"></div>
         <div class="form-group form-full"><label>Address</label><input id="dr-address" placeholder="Chennai"></div>
         <div class="form-group"><label>Emergency Contact</label><input id="dr-ec-name" placeholder="Name"></div>
         <div class="form-group"><label>Emergency Mobile</label><input id="dr-ec-mobile" placeholder="9876500001"></div>
+        <!-- SALARY SECTION -->
+        <div class="form-group form-full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+          <label>Salary Type</label>
+          <select id="dr-salary-type" onchange="toggleSalaryFields()">
+            <option value="fixed">Fixed Monthly Salary</option>
+            <option value="per-trip">Per Trip Rate</option>
+            <option value="per-km">Per KM Rate</option>
+          </select>
+        </div>
+        <div class="form-group form-full" id="dr-salary-row">
+          <label>Monthly Fixed Salary (₹)</label>
+          <input id="dr-salary" type="number" placeholder="16000">
+        </div>
+        <div class="form-group form-full hidden" id="dr-per-trip-row">
+          <label>Per Trip Rate (₹ / trip)</label>
+          <input id="dr-per-trip-rate" type="number" placeholder="2500">
+        </div>
+        <div class="form-group form-full hidden" id="dr-per-km-row">
+          <label>Per KM Rate (₹ / km)</label>
+          <input id="dr-per-km-rate" type="number" placeholder="1.50" step="0.10">
+        </div>
+      </div>
+      <div class="calc-box" style="margin-top:10px">
+        <div style="font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace;letter-spacing:1px;margin-bottom:6px">HOW SALARY IS TRACKED</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.7">
+          • <b>Fixed:</b> Monthly salary — manually set per-trip amount when creating trips<br>
+          • <b>Per Trip:</b> Fixed rate per completed trip, auto-filled when creating trips<br>
+          • <b>Per KM:</b> Rate × trip distance, auto-calculated from odometer readings<br>
+          • Advances deducted from earned salary automatically
+        </div>
       </div>
     </div>
     <div class="modal-foot">
@@ -887,6 +986,60 @@
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('confirm')">Cancel</button>
       <button class="btn btn-danger" id="confirm-ok-btn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- DRIVER SALARY LEDGER MODAL -->
+<div class="modal-overlay hidden" id="modal-driver-salary">
+  <div class="modal" style="max-width:920px;max-height:90vh;display:flex;flex-direction:column">
+    <div class="modal-head">
+      <span class="modal-title">Salary Ledger — <span id="salary-driver-name"></span></span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-ghost btn-sm" onclick="openNewAdvance(document.getElementById('salary-driver-name').textContent)">+ Advance</button>
+        <button class="modal-close" onclick="closeModal('driver-salary')">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" style="overflow-y:auto;flex:1">
+      <div id="salary-summary-html"></div>
+      <div class="table-card" style="margin-top:16px">
+        <div class="table-header"><span class="table-title">Trip-wise Salary Breakdown</span></div>
+        <div style="overflow-x:auto"><table class="table">
+          <thead><tr><th>TRIP#</th><th>DATE</th><th>ROUTE</th><th>KM</th><th>SALARY EARNED</th><th>ADVANCE</th><th>NET DUE</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
+          <tbody id="salary-trips-body"></tbody>
+        </table></div>
+      </div>
+      <div class="table-card" style="margin-top:14px">
+        <div class="table-header"><span class="table-title">Advance History</span></div>
+        <div style="overflow-x:auto"><table class="table">
+          <thead><tr><th>DATE</th><th>TRIP#</th><th>AMOUNT</th><th>NOTE</th><th>ACTIONS</th></tr></thead>
+          <tbody id="salary-advances-body"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('driver-salary')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- DRIVER ADVANCE MODAL -->
+<div class="modal-overlay hidden" id="modal-driver-advance">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-head"><span class="modal-title" id="adv-modal-title">Record Driver Advance</span><button class="modal-close" onclick="closeModal('driver-advance')">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-adv-id" value="-1">
+      <div class="form-grid">
+        <div class="form-group"><label>Date</label><input type="date" id="adv-date"></div>
+        <div class="form-group"><label>Driver</label><select id="adv-driver"></select></div>
+        <div class="form-group form-full"><label>Link to Trip (optional)</label><select id="adv-trip"></select></div>
+        <div class="form-group"><label>Advance Amount (₹)</label><input type="number" id="adv-amount" placeholder="500"></div>
+        <div class="form-group form-full"><label>Note</label><input id="adv-note" placeholder="Reason for advance..."></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('driver-advance')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAdvance()">Save Advance</button>
     </div>
   </div>
 </div>
