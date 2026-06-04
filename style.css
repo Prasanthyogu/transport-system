@@ -1251,13 +1251,212 @@ tr:hover td { background:rgba(255,255,255,0.065); }
   .hero-metrics { min-width:0; }
 }
 
+/* ── MONTH FILTER GROUP ──────────────────────────────────── */
+.month-filter-group {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-shrink:0;
+}
+.month-filter-label {
+  font-size:10px;
+  color:var(--text3);
+  font-family:'IBM Plex Mono',monospace;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.month-filter-input {
+  padding:5px 10px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,0.055);
+  color:var(--text);
+  font-size:12px;
+  font-family:inherit;
+  outline:none;
+  width:auto;
+  min-width:140px;
+  transition:border .15s;
+}
+.month-filter-input:focus { border-color:var(--accent); }
+[data-theme="light"] .month-filter-input { background:var(--bg3); }
+
+/* ── HAMBURGER BUTTON ────────────────────────────────────── */
+.hamburger-btn {
+  display:none;
+  width:36px;
+  height:36px;
+  padding:0;
+  flex-shrink:0;
+  border-radius:12px;
+  align-items:center;
+  justify-content:center;
+}
+.hamburger-lines {
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  align-items:center;
+  pointer-events:none;
+}
+.hamburger-lines span {
+  display:block;
+  height:2px;
+  background:currentColor;
+  border-radius:2px;
+  transition:width .15s;
+}
+.hamburger-lines span:nth-child(1) { width:18px; }
+.hamburger-lines span:nth-child(2) { width:13px; }
+.hamburger-lines span:nth-child(3) { width:18px; }
+
+/* ── MOBILE OVERLAY BACKDROP ─────────────────────────────── */
+#mobile-overlay {
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.55);
+  z-index:299;
+  backdrop-filter:blur(3px);
+  -webkit-backdrop-filter:blur(3px);
+}
+#mobile-overlay.active { display:block; }
+
+/* ── MOBILE BREAKPOINT ≤ 680px ───────────────────────────── */
 @media screen and (max-width: 680px) {
-  .app { display:block; height:auto; overflow:visible; }
-  .sidebar { display:none; }
-  .main { min-height:100vh; }
-  .content { padding-top:12px; }
-  .stat-grid,.hero-metrics { grid-template-columns:1fr; }
-  .ops-hero { padding:18px; }
-  .filter-bar,.table-header { align-items:stretch; flex-direction:column; }
-  .filter-input,.filter-select { width:100%; }
+  /* Show hamburger, fix layout */
+  .hamburger-btn { display:flex; }
+  .app {
+    display:block;
+    height:auto;
+    overflow:visible;
+    padding:0;
+    gap:0;
+    background:none;
+  }
+
+  /* Sidebar becomes fixed overlay */
+  .sidebar {
+    display:flex !important;
+    position:fixed;
+    left:0; top:0; bottom:0;
+    z-index:300;
+    width:280px;
+    height:100%;
+    border-radius:0 22px 22px 0;
+    transform:translateX(-110%);
+    transition:transform .26s cubic-bezier(.2,.8,.2,1), box-shadow .26s;
+    overflow-y:auto;
+    /* Re-show all the labels that were hidden at 1024px */
+  }
+  .sidebar.mobile-open {
+    transform:translateX(0);
+    box-shadow:0 0 0 1px rgba(255,255,255,0.08), 0 24px 80px rgba(0,0,0,0.65);
+  }
+  /* Unhide labels inside sidebar on mobile overlay */
+  .sidebar .brand-copy,
+  .sidebar .workspace-copy,
+  .sidebar .nav-label,
+  .sidebar .nav-section,
+  .sidebar .profile-copy,
+  .sidebar .sidebar-actions,
+  .sidebar .system-pill,
+  .sidebar .nav-badge { display:flex !important; }
+  .sidebar .workspace-copy,
+  .sidebar .profile-copy,
+  .sidebar .brand-copy { display:block !important; }
+  .sidebar .workspace-card,
+  .sidebar .profile-card { justify-content:flex-start; padding:12px; }
+  .sidebar .nav-item { justify-content:flex-start; }
+
+  /* Main takes full width */
+  .main {
+    width:100%;
+    min-height:100vh;
+    overflow:visible;
+  }
+
+  /* Topbar */
+  .topbar {
+    border-radius:0;
+    border-left:none;
+    border-right:none;
+    border-top:none;
+    padding:8px 12px;
+    gap:8px;
+    flex-wrap:nowrap;
+    position:sticky;
+    top:0;
+  }
+  .topbar-heading { flex:1; min-width:0; }
+  .topbar-eyebrow { display:none; }
+  .topbar-title { font-size:15px; margin-top:0; }
+  .search-shell { display:none !important; }
+  #theme-toggle { display:none; }
+  .export-wrapper { display:none; }
+  .topbar-icon { display:none; }
+  #topbar-action { font-size:11px; padding:6px 10px; white-space:nowrap; }
+
+  /* Content */
+  .content { padding:10px 8px 20px; padding-top:12px; }
+
+  /* Stats */
+  .stat-grid { grid-template-columns:1fr 1fr; gap:8px; margin:0 0 12px; }
+  .stat-card { min-height:auto; padding:12px; }
+  .stat-value { font-size:24px; margin-top:10px; }
+  .hero-metrics { grid-template-columns:repeat(3,1fr); min-width:0; gap:8px; }
+
+  /* Dashboard hero */
+  .ops-hero { flex-direction:column; padding:14px; gap:12px; }
+  .ops-hero h1 { font-size:20px; }
+  .ops-hero p { font-size:12px; }
+
+  /* Dashboard grid → single column */
+  .dashboard-grid { grid-template-columns:1fr !important; }
+
+  /* Tables */
+  .table-card { border-radius:14px; }
+  .table-scroll, .table-card { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .table { min-width:700px; }
+
+  /* Table header */
+  .table-header { flex-direction:column; align-items:stretch; gap:8px; padding:10px 12px; }
+  .tab-group { flex-wrap:wrap; }
+  .filter-bar { flex-direction:column; align-items:stretch; }
+  .filter-input, .filter-select { width:100%; }
+  .month-filter-group { width:100%; }
+  .month-filter-input { flex:1; min-width:0; }
+
+  /* Modals — slide up from bottom */
+  .modal-overlay { padding:0; align-items:flex-end; }
+  .modal {
+    border-radius:22px 22px 0 0;
+    max-height:92vh;
+    max-width:100%;
+    width:100%;
+  }
+
+  /* Forms in modals */
+  .form-grid { grid-template-columns:1fr; gap:10px; }
+  input, select, textarea { font-size:16px; } /* Prevents iOS zoom */
+  .modal-foot { flex-direction:column-reverse; }
+  .modal-foot .btn { width:100%; text-align:center; }
+
+  /* Maintenance / loans 2-col → 1-col */
+  div[style*="grid-template-columns:1fr 280px"],
+  div[style*="grid-template-columns:1fr 260px"],
+  div[style*="grid-template-columns:1fr 320px"] { display:block !important; }
+
+  /* Payments 2-col */
+  div[style*="grid-template-columns:1fr 320px"] > div,
+  div[style*="grid-template-columns:1fr 260px"] > div,
+  div[style*="grid-template-columns:1fr 280px"] > div { margin-bottom:12px; }
+
+  /* Pay stat grid */
+  #pay-stat-grid { grid-template-columns:1fr 1fr !important; }
+
+  /* Summary P&L grid → stack */
+  #sum-pnl > div { display:flex; flex-direction:column; gap:12px; }
+  #sum-pnl > div > div { width:100%; }
 }
