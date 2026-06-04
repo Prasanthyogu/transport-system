@@ -83,6 +83,9 @@
   </div>
 </div>
 
+<!-- MOBILE NAV OVERLAY -->
+<div id="mobile-overlay" onclick="toggleSidebar()"></div>
+
 <!-- MAIN APP -->
 <div id="app" style="display:none">
 <div class="app">
@@ -146,6 +149,9 @@
   <!-- MAIN CONTENT -->
   <div class="main">
     <div class="topbar">
+      <button class="hamburger-btn btn btn-ghost" onclick="toggleSidebar()" title="Menu" aria-label="Toggle navigation">
+        <span class="hamburger-lines"><span></span><span></span><span></span></span>
+      </button>
       <div class="topbar-heading">
         <div class="topbar-eyebrow">Mission Control</div>
         <span class="topbar-title" id="page-title">Dashboard</span>
@@ -391,7 +397,7 @@
           <div class="table-header"><span class="table-title">Drivers — Salary Ledger</span></div>
           <div style="overflow-x:auto">
           <table class="table">
-            <thead><tr><th>NAME</th><th>MOBILE</th><th>LICENSE</th><th>LIC. EXPIRY</th><th>TRIPS (DONE)</th><th>TOTAL KM</th><th>SALARY RATE</th><th>EARNED</th><th>ADVANCES</th><th>BALANCE</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
+            <thead><tr><th>NAME</th><th>MOBILE</th><th>LICENSE</th><th>LIC. EXPIRY</th><th>TRIPS (DONE)</th><th>TOTAL KM</th><th>SALARY RATE</th><th>EARNED</th><th>ADVANCES</th><th>NET PAYABLE</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
             <tbody id="drivers-table-body"></tbody>
           </table>
           </div>
@@ -560,6 +566,11 @@
               <div class="tab" onclick="setSumTab(this,'driver-sum')">By Driver</div>
               <div class="tab" onclick="setSumTab(this,'transporter-sum')">By Transporter</div>
             </div>
+            <div class="month-filter-group">
+              <label class="month-filter-label">Month</label>
+              <input type="month" id="sum-month" class="month-filter-input" onchange="renderPnL()" title="Filter by month">
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('sum-month').value='';renderPnL()" title="Clear filter">✕</button>
+            </div>
           </div>
           <div id="sum-pnl">
             <div style="display:grid;grid-template-columns:1fr 1fr 280px;gap:16px;padding:8px">
@@ -584,6 +595,11 @@
               <div class="tab" onclick="setRepTab(this,'pending')">Pending Bills</div>
               <div class="tab" onclick="setRepTab(this,'balance')">Balance Sheet</div>
               <div class="tab" onclick="setRepTab(this,'emi-rep')">EMI Schedule</div>
+            </div>
+            <div class="month-filter-group">
+              <label class="month-filter-label">Month</label>
+              <input type="month" id="rep-month" class="month-filter-input" onchange="renderMonthlyReport()" title="Filter by month">
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('rep-month').value='';renderMonthlyReport()" title="Clear filter">✕</button>
             </div>
           </div>
           <div id="rep-monthly">
