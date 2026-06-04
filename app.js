@@ -27,46 +27,7 @@ function applyTheme(mode) {
 function toggleTheme() {
   applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
 }
-function toggleSidebar() {
-  document.body.classList.toggle('sidebar-collapsed');
-}
-function workspaceInitials(value) {
-  return String(value || 'Workspace').split(/\s|-/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
-}
-function initWorkspaceEditor() {
-  const nameEl = document.getElementById('workspace-name');
-  const avatarEl = document.querySelector('.workspace-avatar');
-  if (!nameEl) return;
-  const saved = localStorage.getItem('fleetops_workspace_name');
-  if (saved) nameEl.value = saved;
-  if (avatarEl) avatarEl.textContent = workspaceInitials(nameEl.value);
-
-  const save = () => {
-    const clean = nameEl.value.replace(/\s+/g, ' ').trim() || 'Apex Logistics';
-    nameEl.value = clean;
-    localStorage.setItem('fleetops_workspace_name', clean);
-    if (avatarEl) avatarEl.textContent = workspaceInitials(clean);
-  };
-  nameEl.addEventListener('focus', () => nameEl.select());
-  nameEl.addEventListener('input', () => {
-    if (avatarEl) avatarEl.textContent = workspaceInitials(nameEl.value);
-  });
-  nameEl.addEventListener('blur', save);
-  nameEl.addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      nameEl.blur();
-    }
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      nameEl.value = localStorage.getItem('fleetops_workspace_name') || 'Apex Logistics';
-      if (avatarEl) avatarEl.textContent = workspaceInitials(nameEl.value);
-      nameEl.blur();
-    }
-  });
-}
 initTheme();
-document.addEventListener('DOMContentLoaded', initWorkspaceEditor);
 
 /* ── IN-MEMORY CACHE ──────────────────────────────────────── */
 // This mirrors Supabase data locally for fast rendering.
@@ -306,10 +267,14 @@ async function loadDB() {
     db.advances     = (advancesRes.data     || []).map(dbToAdvance);
     db.tripCounter  = tcRes.data  ? parseInt(tcRes.data.value)  : 1;
     db.billCounter  = bcRes.data  ? parseInt(bcRes.data.value)  : 1;
-    // Clamp counter to actual max so it never collides with existing rows
+    // Clamp counters to actual max so they never collide with existing rows
     if (db.trips.length > 0) {
       const maxTrip = Math.max(...db.trips.map(t => { const m = String(t.num).match(/T-(\d+)/); return m ? parseInt(m[1]) : 0; }));
       if (maxTrip >= db.tripCounter) db.tripCounter = maxTrip + 1;
+    }
+    if (db.bills.length > 0) {
+      const maxBill = Math.max(...db.bills.map(b => { const m = String(b.num).match(/INV-(\d+)/); return m ? parseInt(m[1]) : 0; }));
+      if (maxBill >= db.billCounter) db.billCounter = maxBill + 1;
     }
 
     // Update sidebar status
@@ -382,13 +347,20 @@ const PAGE_TITLES  = {dashboard:'Dashboard',trips:'Trips',expenses:'Expenses',bi
 const TOP_BTN_LBLS = {dashboard:'+ New Trip',trips:'+ New Trip',expenses:'+ Add Expense',billing:'+ New Invoice',maintenance:'+ Add Service',vehicles:'+ Add Vehicle',drivers:'+ Add Driver',transporters:'+ Add Transporter',loans:'+ Add Loan',payments:'+ Record Payment',summary:'Export',reports:'Print / PDF'};
 
 function showPage(page) {
-  document.querySelectorAll('[id^="page-"]:not(#page-title)').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('[id^="page-"]').forEach(el => el.classList.add('hidden'));
   document.getElementById('page-' + page).classList.remove('hidden');
   document.querySelectorAll('.nav-item').forEach(el => {
     el.classList.toggle('active', !!(el.getAttribute('onclick') && el.getAttribute('onclick').includes("'" + page + "'")));
   });
   document.getElementById('page-title').textContent = PAGE_TITLES[page] || page;
   document.getElementById('topbar-action').textContent = TOP_BTN_LBLS[page] || '+ New';
+  // Close mobile sidebar when navigating
+  if (window.innerWidth <= 680) {
+    const sb = document.getElementById('sidebar');
+    const ov = document.getElementById('mobile-overlay');
+    if (sb) sb.classList.remove('mobile-open');
+    if (ov) ov.classList.remove('active');
+  }
   ({
     dashboard: renderDashboard, trips: renderTrips, billing: renderBilling,
     vehicles: renderVehicles, drivers: renderDrivers, transporters: renderTransporters,
@@ -448,7 +420,7 @@ const CSV_DEFS = {
   'vehicles': { label:'Vehicles', headers:['Reg. No','Type','Make','Model','Year','Ownership','Chassis No','Engine No','Insurance Expiry','Permit Expiry','FC Expiry','PUC Expiry','Status'], rows: () => db.vehicles.map(v=>[v.reg,v.type,v.make,v.model,v.year,v.own,v.chassis,v.engine,v.ins,v.permit,v.fc,v.puc,v.status]) },
   'drivers': { label:'Drivers', headers:['Name','Mobile','Aadhar','License No','License Expiry','Monthly Salary (Rs)','Address','Emergency Contact','Emergency Mobile','Status'], rows: () => db.drivers.map(d=>[d.name,d.mobile,d.aadhar,d.lic,d.licExp,d.salary,d.address,d.ecName,d.ecMobile,d.status]) },
   'transporters': { label:'Transporters', headers:['Name','Contact Person','Mobile','GSTIN','PAN','Payment Terms (Days)','Address'], rows: () => db.transporters.map(t=>[t.name,t.contact,t.mobile,t.gstin,t.pan,t.terms,t.address]) },
-  'loans': { label:'Vehicle_Loans', headers:['Vehicle','Financier','Account No','Principal (Rs)','Interest Rate %','Tenure (Months)','EMI (Rs)','Start Date','EMI Due Day','EMIs Paid','Balance (Rs)','Status'], rows: () => db.loans.map(l=>[l.vehicle,l.fin,l.acc,l.principal,l.rate,l.tenure,l.emi,l.start,l.dueDay,l.paid,Math.max(0,l.principal-l.emi*l.paid),l.status]) },
+  'loans': { label:'Vehicle_Loans', headers:['Vehicle','Financier','Account No','Principal (Rs)','Interest Rate %','Tenure (Months)','EMI (Rs)','Start Date','EMI Due Day','EMIs Paid','Balance (Rs)','Status'], rows: () => db.loans.map(l=>[l.vehicle,l.fin,l.acc,l.principal,l.rate,l.tenure,l.emi,l.start,l.dueDay,l.paid,calcLoanBal(l),l.status]) },
   'private-loans': { label:'Private_Loans', headers:['Lender','Amount (Rs)','Interest Rate %','Date','Amount Paid (Rs)','Balance (Rs)','Status','Notes'], rows: () => db.privateLoans.map(p=>[p.lender,p.amount,p.rate,p.date,p.paid||0,p.amount-(p.paid||0),p.status,p.notes]) },
   'repayments': { label:'Repayments', headers:['Date','Loan Type','Loan / Lender','Amount Paid (Rs)','Reference No'], rows: () => db.repayments.map(r=>[r.date,r.type,r.loan,r.amount,r.ref]) },
 };
@@ -1177,29 +1149,33 @@ function statusBadge(s) {
     Cancelled:'badge-red',Completed:'badge-blue',Inactive:'badge-blue'};
   return `<span class="badge ${m[s]||'badge-blue'}">${(s||'').toUpperCase()}</span>`;
 }
-function initials(value) {
-  return String(value || 'NA').split(/\s|-/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
-}
-function compactMoney(value) {
-  const n = Number(value || 0);
-  if (Math.abs(n) >= 10000000) return '₹' + (n / 10000000).toFixed(1) + 'Cr';
-  if (Math.abs(n) >= 100000) return '₹' + (n / 100000).toFixed(1) + 'L';
-  return '₹' + Math.round(n).toLocaleString('en-IN');
-}
-function animateNumber(el, value, formatter=(v)=>String(Math.round(v))) {
-  if (!el) return;
-  const start = Number(el.dataset.value || 0);
-  const end = Number(value || 0);
-  const duration = 420;
-  const t0 = performance.now();
-  el.dataset.value = end;
-  function frame(now) {
-    const p = Math.min(1, (now - t0) / duration);
-    const eased = 1 - Math.pow(1 - p, 3);
-    el.textContent = formatter(start + (end - start) * eased);
-    if (p < 1) requestAnimationFrame(frame);
+
+/* Proper reducing-balance loan outstanding calculation */
+function calcLoanBal(l) {
+  if (!l.rate || l.rate === 0) {
+    return Math.max(0, Math.round(l.principal - (l.principal / (l.tenure || 1)) * l.paid));
   }
-  requestAnimationFrame(frame);
+  const r = l.rate / 12 / 100;
+  const k = l.paid;
+  const bal = l.principal * Math.pow(1 + r, k) - l.emi * (Math.pow(1 + r, k) - 1) / r;
+  return Math.max(0, Math.round(bal));
+}
+
+/* Month-filter helpers for Summary & Reports pages */
+function getSumMonth() { const el = document.getElementById('sum-month'); return el ? el.value : ''; }
+function getRepMonth() { const el = document.getElementById('rep-month'); return el ? el.value : ''; }
+
+/* Mobile sidebar toggle */
+function toggleSidebar() {
+  const app = document.querySelector('.app');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('mobile-overlay');
+  if (window.innerWidth <= 680) {
+    const open = sidebar.classList.toggle('mobile-open');
+    if (overlay) overlay.classList.toggle('active', open);
+  } else {
+    app.classList.toggle('sidebar-collapsed');
+  }
 }
 
 /* ── RENDER DASHBOARD ─────────────────────────────────────── */
@@ -1209,49 +1185,25 @@ function renderDashboard() {
   const pendingBills=db.bills.filter(b=>b.status==='Pending');
   const pendingAmt=pendingBills.reduce((s,b)=>s+(b.freight-b.deduct+b.other),0);
   const el=id=>document.getElementById(id);
-  animateNumber(el('d-active-trips'), active);
-  if(el('d-active-sub'))   el('d-active-sub').textContent=active ? 'Trips currently moving or loading' : 'No live trips';
-  if(el('d-revenue'))      el('d-revenue').textContent=compactMoney(revenue);
-  if(el('d-revenue-sub'))  el('d-revenue-sub').textContent=`${db.trips.length} trip revenue records`;
-  if(el('d-pending'))      el('d-pending').textContent=compactMoney(pendingAmt);
+  if(el('d-active-trips')) el('d-active-trips').textContent=active;
+  if(el('d-revenue'))      el('d-revenue').textContent='₹'+(revenue/100000).toFixed(1)+'L';
+  if(el('d-pending'))      el('d-pending').textContent='₹'+(pendingAmt/100000).toFixed(1)+'L';
   if(el('d-pending-sub'))  el('d-pending-sub').textContent=pendingBills.length+' invoices';
   const activeV=db.vehicles.filter(v=>v.status==='Active').length;
-  const util=db.vehicles.length>0?Math.round((activeV/db.vehicles.length)*100):0;
-  if(el('d-util')) el('d-util').textContent=db.vehicles.length>0?util+'%':'—';
+  if(el('d-util')) el('d-util').textContent=db.vehicles.length>0?Math.round((activeV/db.vehicles.length)*100)+'%':'—';
   if(el('d-util-sub')) el('d-util-sub').textContent=`${activeV} of ${db.vehicles.length} vehicles`;
-  if(el('d-util-bar')) el('d-util-bar').style.width=util+'%';
-  if(el('hero-trips')) el('hero-trips').textContent=db.trips.length;
-  if(el('hero-vehicles')) el('hero-vehicles').textContent=db.vehicles.length;
-  if(el('hero-drivers')) el('hero-drivers').textContent=db.drivers.filter(d=>d.status==='Active').length;
   if(el('qs-vehicles')) el('qs-vehicles').textContent=db.vehicles.length;
   if(el('qs-drivers'))  el('qs-drivers').textContent=db.drivers.filter(d=>d.status==='Active').length;
   if(el('qs-trips'))    el('qs-trips').textContent=db.trips.length;
-  if(el('qs-diesel'))   el('qs-diesel').textContent=compactMoney(db.diesel.reduce((s,d)=>s+d.amount,0));
-  if(el('qs-fastag'))   el('qs-fastag').textContent=compactMoney(db.fastag.reduce((s,f)=>s+f.amount,0));
-  if(el('qs-maint'))    el('qs-maint').textContent=compactMoney(db.maintenance.reduce((s,m)=>s+m.parts+m.labour,0));
-  const chart=el('revenue-chart');
-  if(chart) {
-    const buckets = db.trips.slice(0,8).reverse().map(t=>t.freight || 0);
-    const values = buckets.length ? buckets : [12,18,14,26,22,32,28,38].map(x=>x*10000);
-    const max = Math.max(...values, 1);
-    chart.innerHTML = values.map((v,i)=>`<div class="chart-bar" style="height:${Math.max(16, (v/max)*100)}%" title="${compactMoney(v)}"><span>${i+1}</span></div>`).join('');
-  }
+  if(el('qs-diesel'))   el('qs-diesel').textContent='₹'+db.diesel.reduce((s,d)=>s+d.amount,0).toLocaleString();
+  if(el('qs-fastag'))   el('qs-fastag').textContent='₹'+db.fastag.reduce((s,f)=>s+f.amount,0).toLocaleString();
+  if(el('qs-maint'))    el('qs-maint').textContent='₹'+db.maintenance.reduce((s,m)=>s+m.parts+m.labour,0).toLocaleString();
   const dash=el('dash-trips-body');
   if(dash) dash.innerHTML=db.trips.slice(0,5).map(t=>
-    `<tr><td><span class="mono text-accent">${t.num}</span></td><td><div class="vehicle-cell"><span class="avatar-chip">${initials(t.vehicle)}</span>${t.vehicle}</div></td>
-     <td class="route-cell">${(t.from||'').slice(0,3).toUpperCase()} → ${(t.to||'').slice(0,3).toUpperCase()}</td>
+    `<tr><td><span class="mono text-accent">${t.num}</span></td><td>${t.vehicle}</td>
+     <td>${(t.from||'').slice(0,3).toUpperCase()}→${(t.to||'').slice(0,3).toUpperCase()}</td>
      <td>${statusBadge(t.status)}</td></tr>`
-  ).join('')||'<tr><td colspan="4" class="empty-cell">No trips yet</td></tr>';
-  const feed=el('activity-feed');
-  if(feed) {
-    const items = db.trips.slice(0,4).map(t=>({
-      title:`${t.num} ${t.status || 'updated'}`,
-      meta:`${t.vehicle || 'Vehicle'} · ${t.from || 'Origin'} to ${t.to || 'Destination'}`
-    }));
-    feed.innerHTML = (items.length ? items : [
-      {title:'No live operating events yet', meta:'Create a trip to start the activity stream'}
-    ]).map(x=>`<div class="activity-item"><span class="activity-dot"></span><div><div class="activity-title">${x.title}</div><div class="activity-meta">${x.meta}</div></div></div>`).join('');
-  }
+  ).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:12px">No trips yet</td></tr>';
 }
 
 /* ── RENDER TRIPS ─────────────────────────────────────────── */
@@ -1274,21 +1226,19 @@ function renderTrips() {
     const profit=t.freight-fuel-maint;
     return `<tr>
       <td><span class="mono text-accent">${t.num}</span></td>
-      <td>${t.date}</td>
-      <td><div class="vehicle-cell"><span class="avatar-chip">${initials(t.vehicle)}</span><span>${t.vehicle}</span></div></td>
-      <td><div class="driver-cell"><span class="avatar-chip">${initials(t.driver)}</span><span>${t.driver}</span></div></td>
-      <td class="route-cell">${t.from}</td><td class="route-cell">${t.to}</td>
+      <td>${t.date}</td><td>${t.vehicle}</td><td>${t.driver}</td>
+      <td>${t.from}</td><td>${t.to}</td>
       <td class="mono">${t.km.toLocaleString()}</td>
-      <td>${compactMoney(t.freight)}</td>
-      <td class="text-red">${compactMoney(fuel)}</td>
-      <td class="text-amber">${compactMoney(maint)}</td>
-      <td class="${profit>=0?'text-green':'text-red'}">${compactMoney(profit)}</td>
+      <td>₹${t.freight.toLocaleString()}</td>
+      <td class="text-red">₹${fuel.toLocaleString()}</td>
+      <td class="text-amber">₹${maint.toLocaleString()}</td>
+      <td class="${profit>=0?'text-green':'text-red'}">₹${profit.toLocaleString()}</td>
       <td>${statusBadge(t.status)}</td>
       <td><div class="action-row">
         <div class="icon-btn" onclick="editTrip(${i})" title="Edit">✎</div>
         <div class="icon-btn" onclick="confirmDelete('Delete trip ${t.num}?',()=>deleteTrip(${i}))" title="Delete">✕</div>
       </div></td></tr>`;
-  }).join('')||'<tr><td colspan="13" class="empty-cell">No trips found</td></tr>';
+  }).join('')||'<tr><td colspan="13" style="text-align:center;padding:20px;color:var(--text3)">No trips found</td></tr>';
 }
 
 /* ── RENDER EXPENSES ──────────────────────────────────────── */
@@ -1655,12 +1605,16 @@ function renderDrivers() {
     const completedT=myT.filter(t=>t.status==='Completed');
     const km=myT.reduce((s,t)=>s+t.km,0);
     const earned=completedT.reduce((s,t)=>s+(t.tripSalary||0),0);
-    const advances=db.advances.filter(a=>a.driver===d.name).reduce((s,a)=>s+a.amount,0);
-    const balance=earned-advances;
+    const advances=db.advances.filter(a=>(a.driver||'').trim()===(d.name||'').trim()).reduce((s,a)=>s+a.amount,0);
+    const paidOut=completedT.filter(t=>t.driverSalaryPaid).reduce((s,t)=>s+(t.tripSalary||0),0);
+    const balance=earned-advances-paidOut;   // net still payable to driver
     let salaryRate='—';
     if(d.salaryType==='per-trip') salaryRate=`₹${(d.perTripRate||0).toLocaleString()}/trip`;
     else if(d.salaryType==='per-km') salaryRate=`₹${d.perKmRate||0}/km`;
     else salaryRate=`₹${(d.salary||0).toLocaleString()}/mo`;
+    const balanceDisplay = balance === 0
+      ? `<span class="badge badge-green" style="font-size:11px">SETTLED</span>`
+      : `₹${Math.abs(balance).toLocaleString()}${balance < 0 ? ' <small style="font-size:10px">(excess)</small>' : ''}`;
     return `<tr>
       <td><b>${d.name}</b></td><td>${d.mobile}</td><td class="mono">${d.lic}</td>
       <td>${expiryBadge(d.licExp)}</td>
@@ -1669,7 +1623,7 @@ function renderDrivers() {
       <td class="mono" style="font-size:11px">${salaryRate}</td>
       <td class="mono">₹${earned.toLocaleString()}</td>
       <td class="mono text-red">₹${advances.toLocaleString()}</td>
-      <td class="mono ${balance>0?'text-amber':'text-green'}">₹${balance.toLocaleString()}</td>
+      <td class="mono ${balance>0?'text-red':balance<0?'text-amber':'text-green'}">${balanceDisplay}</td>
       <td>${statusBadge(d.status)}</td>
       <td><div class="action-row">
         <button class="btn btn-ghost btn-sm" onclick="openSalaryDetail('${d.name.replace(/'/g,"\\'")}')">₹ Salary</button>
@@ -1861,7 +1815,7 @@ function renderTransporters() {
 function renderLoans() {
   const tbody=document.getElementById('loans-table-body'); if(!tbody) return;
   tbody.innerHTML=db.loans.map((l,i)=>{
-    const bal=Math.max(0,l.principal-l.emi*l.paid);
+    const bal=calcLoanBal(l);
     const now=new Date();
     const due=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(l.dueDay).padStart(2,'0')}`;
     const days=Math.round((new Date(due)-now)/86400000);
@@ -1912,19 +1866,23 @@ function renderLoans() {
 
 /* ── RENDER SUMMARY ───────────────────────────────────────── */
 function renderPnL() {
-  const rev=db.trips.reduce((s,t)=>s+t.freight,0);
-  const fuel=db.diesel.reduce((s,d)=>s+(d.amount||0),0);
-  const toll=db.fastag.reduce((s,f)=>s+(f.amount||0),0);
-  const adbl=db.adblue.reduce((s,a)=>s+(a.amount||0),0);
-  const mnt=db.maintenance.reduce((s,m)=>s+m.parts+m.labour,0);
-  const sal=db.trips.filter(t=>t.status==='Completed').reduce((s,t)=>s+(t.tripSalary||0),0);
-  const emi=db.loans.filter(l=>l.status==='Active').reduce((s,l)=>s+l.emi,0);
-  const oth=db.otherExp.reduce((s,e)=>s+(e.amount||0),0);
-  const exp=fuel+toll+adbl+mnt+sal+emi+oth;
-  const profit=rev-exp;
-  const margin=rev>0?((profit/rev)*100).toFixed(1):0;
+  const mf = getSumMonth();
+  const inM = d => !mf || (d && String(d).startsWith(mf));
+  const mfLabel = mf ? ` — ${new Date(mf+'-01').toLocaleString('default',{month:'long',year:'numeric'})}` : '';
+  const trips = db.trips.filter(t => inM(t.date));
+  const rev  = trips.reduce((s,t)=>s+t.freight,0);
+  const fuel = db.diesel.filter(d=>inM(d.date)).reduce((s,d)=>s+(d.amount||0),0);
+  const toll = db.fastag.filter(f=>inM(f.date)).reduce((s,f)=>s+(f.amount||0),0);
+  const adbl = db.adblue.filter(a=>inM(a.date)).reduce((s,a)=>s+(a.amount||0),0);
+  const mnt  = db.maintenance.filter(m=>inM(m.date)).reduce((s,m)=>s+m.parts+m.labour,0);
+  const sal  = trips.filter(t=>t.status==='Completed').reduce((s,t)=>s+(t.tripSalary||0),0);
+  const emi  = db.loans.filter(l=>l.status==='Active').reduce((s,l)=>s+l.emi,0);
+  const oth  = db.otherExp.filter(e=>inM(e.date)).reduce((s,e)=>s+(e.amount||0),0);
+  const exp  = fuel+toll+adbl+mnt+sal+emi+oth;
+  const profit = rev-exp;
+  const margin = rev>0?((profit/rev)*100).toFixed(1):0;
   const inc=document.getElementById('pnl-income');
-  if(inc) inc.innerHTML=`<div class="pl-row"><span>Freight Revenue</span><span class="pl-income mono">+ ₹${rev.toLocaleString()}</span></div>
+  if(inc) inc.innerHTML=`<div class="pl-row"><span>Freight Revenue${mfLabel}</span><span class="pl-income mono">+ ₹${rev.toLocaleString()}</span></div>
     <div class="pl-row" style="font-weight:500"><span>Total Income</span><span class="pl-income mono">+ ₹${rev.toLocaleString()}</span></div>`;
   const exEl=document.getElementById('pnl-expenses');
   if(exEl) exEl.innerHTML=`
@@ -1933,19 +1891,21 @@ function renderPnL() {
     <div class="pl-row"><span>Adblue</span><span class="pl-expense mono">- ₹${adbl.toLocaleString()}</span></div>
     <div class="pl-row"><span>Maintenance</span><span class="pl-expense mono">- ₹${mnt.toLocaleString()}</span></div>
     <div class="pl-row"><span>Driver Salaries</span><span class="pl-expense mono">- ₹${sal.toLocaleString()}</span></div>
-    <div class="pl-row"><span>EMI</span><span class="pl-expense mono">- ₹${emi.toLocaleString()}</span></div>
+    <div class="pl-row"><span>EMI ${mf?'(monthly rate)':''}</span><span class="pl-expense mono">- ₹${emi.toLocaleString()}</span></div>
     <div class="pl-row"><span>Other</span><span class="pl-expense mono">- ₹${oth.toLocaleString()}</span></div>
     <div class="pl-row" style="font-weight:500"><span>Total Expenses</span><span class="pl-expense mono">- ₹${exp.toLocaleString()}</span></div>`;
   const res=document.getElementById('pnl-result');
   if(res){const color=profit>=0?'var(--green)':'var(--red)';
-    res.innerHTML=`<div style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;letter-spacing:1px;margin-bottom:8px">NET ${profit>=0?'PROFIT':'LOSS'}</div>
+    res.innerHTML=`<div style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;letter-spacing:1px;margin-bottom:8px">NET ${profit>=0?'PROFIT':'LOSS'}${mfLabel}</div>
     <div style="font-size:36px;font-weight:500;color:${color};font-family:'IBM Plex Mono',monospace">₹${Math.abs(profit).toLocaleString()}</div>
     <div style="font-size:12px;color:var(--text3);margin-top:4px">Margin: ${margin}%</div>`;}
   renderTripSummary(); renderVehicleSummary(); renderDriverSummary(); renderTransporterSummary();
 }
 function renderTripSummary() {
+  const mf = getSumMonth();
+  const trips = db.trips.filter(t => !mf || (t.date && t.date.startsWith(mf)));
   const tbody=document.getElementById('trip-sum-body'); if(!tbody) return;
-  tbody.innerHTML=db.trips.map(t=>{
+  tbody.innerHTML=trips.map(t=>{
     const fuel=t.km>0?Math.round((t.km/t.mileage)*t.dprice):0;
     const maint=Math.round(t.km*t.maintKm);
     const toll=db.fastag.filter(f=>f.trip===t.num).reduce((s,f)=>s+(f.amount||0),0);
@@ -1961,12 +1921,13 @@ function renderTripSummary() {
       <td class="text-red">₹${drvSal.toLocaleString()}</td>
       <td class="${profit>=0?'text-green':'text-red'}">₹${profit.toLocaleString()}</td>
       <td><span class="badge ${margin>=15?'badge-green':margin>=0?'badge-amber':'badge-red'}">${margin}%</span></td></tr>`;
-  }).join('')||'<tr><td colspan="10" style="text-align:center;padding:14px;color:var(--text3)">No data</td></tr>';
+  }).join('')||'<tr><td colspan="10" style="text-align:center;padding:14px;color:var(--text3)">No data'+(mf?' for selected month':'')+'</td></tr>';
 }
 function renderVehicleSummary() {
+  const mf = getSumMonth();
   const tbody=document.getElementById('vehicle-sum-body'); if(!tbody) return;
   tbody.innerHTML=db.vehicles.map(v=>{
-    const vT=db.trips.filter(t=>t.vehicle===v.reg);
+    const vT=db.trips.filter(t=>t.vehicle===v.reg && (!mf||(t.date&&t.date.startsWith(mf))));
     const km=vT.reduce((s,t)=>s+t.km,0),rev=vT.reduce((s,t)=>s+t.freight,0);
     const fuel=vT.reduce((s,t)=>s+(t.km>0?(t.km/t.mileage)*t.dprice:0),0);
     const maint=vT.reduce((s,t)=>s+(t.km*t.maintKm),0);
@@ -1979,13 +1940,14 @@ function renderVehicleSummary() {
   }).join('');
 }
 function renderDriverSummary() {
+  const mf = getSumMonth();
   const tbody=document.getElementById('driver-sum-body'); if(!tbody) return;
   tbody.innerHTML=db.drivers.map(d=>{
-    const dT=db.trips.filter(t=>t.driver===d.name);
+    const dT=db.trips.filter(t=>t.driver===d.name && (!mf||(t.date&&t.date.startsWith(mf))));
     const completedT=dT.filter(t=>t.status==='Completed');
     const km=dT.reduce((s,t)=>s+t.km,0);
     const earned=completedT.reduce((s,t)=>s+(t.tripSalary||0),0);
-    const adv=db.advances.filter(a=>a.driver===d.name).reduce((s,a)=>s+a.amount,0);
+    const adv=db.advances.filter(a=>(a.driver||'').trim()===(d.name||'').trim()).reduce((s,a)=>s+a.amount,0);
     const bal=earned-adv;
     return `<tr><td><b>${d.name}</b></td><td>${dT.length}</td><td class="mono">${km.toLocaleString()}</td>
       <td>₹${(d.salary||0).toLocaleString()}/trip</td><td>₹${earned.toLocaleString()}</td><td>₹${adv.toLocaleString()}</td>
@@ -2004,9 +1966,10 @@ function renderDriverSalaries() {
   ).join('')||'<tr><td colspan="7" style="text-align:center;padding:14px;color:var(--text3)">No driver salary entries</td></tr>';
 }
 function renderTransporterSummary() {
+  const mf = getSumMonth();
   const tbody=document.getElementById('transporter-sum-body'); if(!tbody) return;
   tbody.innerHTML=db.transporters.map(t=>{
-    const tT=db.trips.filter(tr=>tr.transporter===t.name);
+    const tT=db.trips.filter(tr=>tr.transporter===t.name && (!mf||(tr.date&&tr.date.startsWith(mf))));
     const billed=tT.reduce((s,tr)=>s+tr.freight,0);
     const recv=db.bills.filter(b=>b.transporter===t.name&&b.status==='Paid').reduce((s,b)=>s+(b.freight-b.deduct+b.other),0);
     const pending=billed-recv;
@@ -2016,8 +1979,10 @@ function renderTransporterSummary() {
   }).join('');
 }
 function renderMonthlyReport() {
+  const mf = getRepMonth();
+  const trips = db.trips.filter(t => !mf || (t.date && t.date.startsWith(mf)));
   const tbody=document.getElementById('monthly-rep-body'); if(!tbody) return;
-  tbody.innerHTML=db.trips.map(t=>{
+  tbody.innerHTML=trips.map(t=>{
     const fuel=t.km>0?Math.round((t.km/t.mileage)*t.dprice):0;
     const maint=Math.round(t.km*t.maintKm);
     const profit=t.freight-fuel-maint;
@@ -2025,7 +1990,7 @@ function renderMonthlyReport() {
       <td>${t.vehicle}</td><td>${t.from}→${t.to}</td><td class="mono">${t.km.toLocaleString()}</td>
       <td>₹${t.freight.toLocaleString()}</td><td class="text-red">₹${(fuel+maint).toLocaleString()}</td>
       <td class="${profit>=0?'text-green':'text-red'}">₹${profit.toLocaleString()}</td></tr>`;
-  }).join('')||'<tr><td colspan="8" style="text-align:center;padding:14px;color:var(--text3)">No data</td></tr>';
+  }).join('')||`<tr><td colspan="8" style="text-align:center;padding:14px;color:var(--text3)">No data${mf?' for selected month':''}</td></tr>`;
 }
 
 /* ── TAB HELPERS ──────────────────────────────────────────── */
@@ -2041,10 +2006,16 @@ function setLoanTab(el,tab){
 function setSumTab(el,tab){
   document.querySelectorAll('#page-summary .tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
   ['pnl','trip-sum','vehicle-sum','driver-sum','transporter-sum'].forEach(t=>{const e=document.getElementById('sum-'+t);if(e)e.classList.toggle('hidden',t!==tab);});
+  if(tab==='pnl') renderPnL();
+  else if(tab==='trip-sum') renderTripSummary();
+  else if(tab==='vehicle-sum') renderVehicleSummary();
+  else if(tab==='driver-sum') renderDriverSummary();
+  else if(tab==='transporter-sum') renderTransporterSummary();
 }
 function setRepTab(el,tab){
   document.querySelectorAll('#page-reports .tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
   ['monthly','pending','balance','emi-rep'].forEach(t=>{const e=document.getElementById('rep-'+t);if(e)e.classList.toggle('hidden',t!==tab);});
+  if(tab==='monthly') renderMonthlyReport();
 }
 
 /* ── CLEAR / RESET DATA ───────────────────────────────────── */
