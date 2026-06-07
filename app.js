@@ -333,7 +333,7 @@ function populateSelects() {
     .forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = vehOpts; });
   const td = document.getElementById('t-driver');      if (td) td.innerHTML = drvOpts;
   const tt = document.getElementById('t-transporter'); if (tt) tt.innerHTML = trpOpts;
-  const bt = document.getElementById('b-transporter'); if (bt) bt.innerHTML = trpOpts;
+  const bt = document.getElementById('b-transporter'); if (bt) bt.innerHTML = '<option value="">— Select Transporter —</option>' + trpOpts;
   const ad = document.getElementById('adv-driver');    if (ad) ad.innerHTML = drvOpts;
   ['ed-trip','ef-trip','eo-trip'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = tripOpts; });
 
@@ -687,11 +687,31 @@ async function deleteTransporter(idx) {
 }
 
 /* ── BILLING ──────────────────────────────────────────────── */
-function _wireBillingTripSelect() {
+function _wireBillingTripSelect(currentBillIdx = -1, preselected = []) {
   const bTrips = document.getElementById('b-trips'); if (!bTrips) return;
-  bTrips.innerHTML = db.trips.map(t =>
-    `<option value="${t.num}">${t.num} — ${t.from}→${t.to} — ₹${t.freight.toLocaleString()}</option>`
-  ).join('');
+  const bTransporter = document.getElementById('b-transporter');
+
+  // trips already billed in OTHER invoices (not the one being edited)
+  const alreadyBilled = new Set(
+    db.bills.filter((_, i) => i !== currentBillIdx).flatMap(b => b.trips || [])
+  );
+
+  function refreshOptions() {
+    const sel = bTransporter ? bTransporter.value : '';
+    const available = db.trips.filter(t =>
+      !alreadyBilled.has(t.num) && (!sel || t.transporter === sel)
+    );
+    bTrips.innerHTML = available.length
+      ? available.map(t =>
+          `<option value="${t.num}"${preselected.includes(t.num) ? ' selected' : ''}>${t.num} — ${t.from}→${t.to} — ₹${t.freight.toLocaleString()}</option>`
+        ).join('')
+      : `<option disabled value="">— No pending trips${sel ? ' for this transporter' : ''} —</option>`;
+  }
+
+  refreshOptions();
+
+  if (bTransporter) bTransporter.onchange = () => { refreshOptions(); calcBill(); };
+
   bTrips.onchange = () => {
     const total = [...bTrips.selectedOptions].reduce((s, o) => {
       const trip = db.trips.find(t => t.num === o.value);
@@ -708,9 +728,9 @@ function openNewBilling() {
   document.getElementById('b-date').value = today();
   document.getElementById('b-freight').value = ''; document.getElementById('b-deduct').value = '0';
   document.getElementById('b-other').value = '0';
-  _wireBillingTripSelect();
-  const bTrips = document.getElementById('b-trips');
-  if (bTrips) [...bTrips.options].forEach(o => o.selected = false);
+  const bTransporter = document.getElementById('b-transporter');
+  if (bTransporter) bTransporter.value = '';
+  _wireBillingTripSelect(-1, []);
   calcBill(); _show('billing');
 }
 function editBill(idx) {
@@ -721,9 +741,7 @@ function editBill(idx) {
   document.getElementById('b-transporter').value = b.transporter;
   document.getElementById('b-freight').value = b.freight; document.getElementById('b-deduct').value = b.deduct;
   document.getElementById('b-other').value = b.other;
-  _wireBillingTripSelect();
-  const bTrips = document.getElementById('b-trips');
-  if (bTrips) [...bTrips.options].forEach(o => { o.selected = (b.trips || []).includes(o.value); });
+  _wireBillingTripSelect(idx, b.trips || []);
   calcBill(); _show('billing');
 }
 async function saveBill() {
@@ -1799,7 +1817,7 @@ function renderTransporters() {
     const recv=db.bills.filter(b=>b.transporter===t.name&&b.status==='Paid').reduce((s,b)=>s+(b.freight-b.deduct+b.other),0);
     const bal=billed-recv;
     return `<tr>
-      <td><b>${t.name}</b></td><td>${t.contact}</td><td>${t.mobile}</td>
+      <td><b style="cursor:pointer;color:var(--accent);text-decoration:underline dotted" onclick="showTransporterDetail('${t.name.replace(/'/g,"\\'")}')">${t.name}</b></td><td>${t.contact}</td><td>${t.mobile}</td>
       <td class="mono" style="font-size:11px">${t.gstin||'—'}</td>
       <td>${myT.length}</td><td>₹${billed.toLocaleString()}</td>
       <td>₹${Math.round(recv).toLocaleString()}</td>
@@ -1948,9 +1966,13 @@ function renderDriverSummary() {
     const km=dT.reduce((s,t)=>s+t.km,0);
     const earned=completedT.reduce((s,t)=>s+(t.tripSalary||0),0);
     const adv=db.advances.filter(a=>(a.driver||'').trim()===(d.name||'').trim()).reduce((s,a)=>s+a.amount,0);
-    const bal=earned-adv;
+    const paidOut=completedT.filter(t=>t.driverSalaryPaid).reduce((s,t)=>s+(t.tripSalary||0),0);
+    const bal=earned-adv-paidOut;
+    let rateLabel='₹'+(d.salary||0).toLocaleString()+'/mo';
+    if(d.salaryType==='per-trip') rateLabel='₹'+(d.perTripRate||0).toLocaleString()+'/trip';
+    else if(d.salaryType==='per-km') rateLabel='₹'+(d.perKmRate||0)+'/km';
     return `<tr><td><b>${d.name}</b></td><td>${dT.length}</td><td class="mono">${km.toLocaleString()}</td>
-      <td>₹${(d.salary||0).toLocaleString()}/trip</td><td>₹${earned.toLocaleString()}</td><td>₹${adv.toLocaleString()}</td>
+      <td>${rateLabel}</td><td>₹${earned.toLocaleString()}</td><td>₹${adv.toLocaleString()}</td><td>₹${paidOut.toLocaleString()}</td>
       <td class="${bal>=0?'text-green':'text-red'}">₹${Math.abs(bal).toLocaleString()} ${bal>=0?'cr':'db'}</td></tr>`;
   }).join('');
 }
@@ -1970,13 +1992,59 @@ function renderTransporterSummary() {
   const tbody=document.getElementById('transporter-sum-body'); if(!tbody) return;
   tbody.innerHTML=db.transporters.map(t=>{
     const tT=db.trips.filter(tr=>tr.transporter===t.name && (!mf||(tr.date&&tr.date.startsWith(mf))));
-    const billed=tT.reduce((s,tr)=>s+tr.freight,0);
-    const recv=db.bills.filter(b=>b.transporter===t.name&&b.status==='Paid').reduce((s,b)=>s+(b.freight-b.deduct+b.other),0);
+    const tBills=db.bills.filter(b=>b.transporter===t.name && (!mf||(b.date&&b.date.startsWith(mf))));
+    const billed=tBills.reduce((s,b)=>s+(b.freight-b.deduct+b.other),0);
+    const recv=tBills.reduce((s,b)=>s+_billPaidAmt(b),0);
     const pending=billed-recv;
-    return `<tr><td><b>${t.name}</b></td><td>${tT.length}</td>
-      <td>₹${billed.toLocaleString()}</td><td>₹${Math.round(recv).toLocaleString()}</td>
+    return `<tr>
+      <td><b style="cursor:pointer;color:var(--accent);text-decoration:underline dotted" onclick="showTransporterDetail('${t.name.replace(/'/g,"\\'")}'">${t.name}</b></td>
+      <td>${tT.length}</td>
+      <td>₹${Math.round(billed).toLocaleString()}</td>
+      <td>₹${Math.round(recv).toLocaleString()}</td>
       <td class="${pending>0?'text-amber':'text-green'}">₹${Math.round(pending).toLocaleString()}</td></tr>`;
   }).join('');
+}
+
+function showTransporterDetail(name) {
+  document.getElementById('transporter-detail-title').textContent = name + ' — Details';
+
+  const bills = db.bills.filter(b => b.transporter === name);
+  const billsTbody = document.getElementById('transporter-detail-bills');
+  billsTbody.innerHTML = bills.map(b => {
+    const net = b.freight - b.deduct + b.other;
+    const paid = _billPaidAmt(b);
+    const bal = net - paid;
+    const statusCls = b.status==='Paid'?'badge-green':b.status==='Partial'?'badge-blue':'badge-amber';
+    return `<tr>
+      <td><span class="mono text-accent">${b.num}</span></td>
+      <td>${b.date}</td>
+      <td style="font-size:11px">${(b.trips||[]).join(', ')||'—'}</td>
+      <td>₹${b.freight.toLocaleString()}</td>
+      <td class="text-red">₹${b.deduct.toLocaleString()}</td>
+      <td class="text-green">₹${b.other.toLocaleString()}</td>
+      <td class="mono"><b>₹${Math.round(net).toLocaleString()}</b></td>
+      <td class="text-green">₹${Math.round(paid).toLocaleString()}</td>
+      <td class="${bal>0?'text-amber':'text-green'}">₹${Math.round(bal).toLocaleString()}</td>
+      <td><span class="badge ${statusCls}">${b.status}</span></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="10" style="text-align:center;padding:12px;color:var(--text3)">No bills</td></tr>';
+
+  const tripNums = bills.flatMap(b => b.trips || []);
+  const trips = db.trips.filter(tr => tr.transporter === name);
+  const tripsTbody = document.getElementById('transporter-detail-trips');
+  tripsTbody.innerHTML = trips.map(tr => {
+    const inBill = tripNums.includes(tr.num);
+    return `<tr>
+      <td><span class="mono text-accent">${tr.num}</span></td>
+      <td>${tr.date}</td>
+      <td>${tr.from}→${tr.to}</td>
+      <td>${tr.vehicle}</td>
+      <td>₹${tr.freight.toLocaleString()}</td>
+      <td>${inBill?'<span class="badge badge-green">Billed</span>':'<span class="badge badge-amber">Unbilled</span>'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;padding:12px;color:var(--text3)">No trips</td></tr>';
+
+  _show('transporter-detail');
 }
 function renderMonthlyReport() {
   const mf = getRepMonth();
