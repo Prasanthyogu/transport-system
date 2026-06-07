@@ -104,7 +104,7 @@
     <div class="workspace-card">
       <div class="workspace-avatar">AX</div>
       <div class="workspace-copy">
-        <input class="workspace-name workspace-input" id="workspace-name" aria-label="Workspace name" spellcheck="false" title="Edit workspace name" value="SREE TRANSPORT">
+        <input class="workspace-name workspace-input" id="workspace-name" aria-label="Workspace name" spellcheck="false" title="Edit workspace name" value="Apex Logistics">
         <div class="workspace-meta"><span class="live-dot"></span>Ops command live</div>
       </div>
     </div>
@@ -581,7 +581,7 @@
           </div>
           <div id="sum-trip-sum" class="hidden"><div style="overflow-x:auto"><table class="table"><thead><tr><th>Trip#</th><th>Vehicle</th><th>Route</th><th>KM</th><th>Freight</th><th>Fuel</th><th>Toll</th><th>Misc</th><th>Driver Sal</th><th>Profit</th><th>Margin</th></tr></thead><tbody id="trip-sum-body"></tbody></table></div></div>
           <div id="sum-vehicle-sum" class="hidden"><table class="table"><thead><tr><th>Vehicle</th><th>Trips</th><th>Total KM</th><th>Revenue</th><th>Fuel Cost</th><th>Maint Cost</th><th>Profit</th><th>Margin</th></tr></thead><tbody id="vehicle-sum-body"></tbody></table></div>
-          <div id="sum-driver-sum" class="hidden"><table class="table"><thead><tr><th>Driver</th><th>Trips</th><th>Total KM</th><th>Rate/Trip</th><th>Earned</th><th>Advance</th><th>Balance</th></tr></thead><tbody id="driver-sum-body"></tbody></table></div>
+          <div id="sum-driver-sum" class="hidden"><table class="table"><thead><tr><th>Driver</th><th>Trips</th><th>Total KM</th><th>Rate</th><th>Earned</th><th>Advance</th><th>Paid Out</th><th>Net Balance</th></tr></thead><tbody id="driver-sum-body"></tbody></table></div>
           <div id="sum-transporter-sum" class="hidden"><table class="table"><thead><tr><th>Transporter</th><th>Trips</th><th>Billed</th><th>Received</th><th>Pending</th></tr></thead><tbody id="transporter-sum-body"></tbody></table></div>
         </div>
       </div>
@@ -1056,6 +1056,36 @@
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('driver-advance')">Cancel</button>
       <button class="btn btn-primary" onclick="saveAdvance()">Save Advance</button>
+    </div>
+  </div>
+</div>
+
+<!-- TRANSPORTER DETAIL MODAL -->
+<div class="modal-overlay hidden" id="modal-transporter-detail">
+  <div class="modal" style="max-width:820px">
+    <div class="modal-head"><span class="modal-title" id="transporter-detail-title">Transporter Details</span><button class="modal-close" onclick="closeModal('transporter-detail')">✕</button></div>
+    <div class="modal-body" style="padding:0">
+      <div style="padding:16px 20px 0">
+        <div style="font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Bills</div>
+        <div style="overflow-x:auto">
+          <table class="table" style="font-size:13px">
+            <thead><tr><th>Bill#</th><th>Date</th><th>Trips</th><th>Freight</th><th>Deduction</th><th>Other</th><th>Net Payable</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
+            <tbody id="transporter-detail-bills"></tbody>
+          </table>
+        </div>
+      </div>
+      <div style="padding:16px 20px 0;margin-top:4px">
+        <div style="font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Trips</div>
+        <div style="overflow-x:auto">
+          <table class="table" style="font-size:13px">
+            <thead><tr><th>Trip#</th><th>Date</th><th>Route</th><th>Vehicle</th><th>Freight</th><th>Status</th></tr></thead>
+            <tbody id="transporter-detail-trips"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeModal('transporter-detail')">Close</button>
     </div>
   </div>
 </div>
