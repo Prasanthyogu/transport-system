@@ -565,6 +565,7 @@
               <div class="tab" onclick="setSumTab(this,'vehicle-sum')">By Vehicle</div>
               <div class="tab" onclick="setSumTab(this,'driver-sum')">By Driver</div>
               <div class="tab" onclick="setSumTab(this,'transporter-sum')">By Transporter</div>
+              <div class="tab" onclick="setSumTab(this,'maint-amount')">Maintenance Amount</div>
             </div>
             <div class="month-filter-group">
               <label class="month-filter-label">Month</label>
@@ -583,6 +584,10 @@
           <div id="sum-vehicle-sum" class="hidden"><table class="table"><thead><tr><th>Vehicle</th><th>Trips</th><th>Total KM</th><th>Revenue</th><th>Fuel Cost</th><th>Maint Cost</th><th>Profit</th><th>Margin</th></tr></thead><tbody id="vehicle-sum-body"></tbody></table></div>
           <div id="sum-driver-sum" class="hidden"><table class="table"><thead><tr><th>Driver</th><th>Trips</th><th>Total KM</th><th>Rate</th><th>Earned</th><th>Advance</th><th>Paid Out</th><th>Net Balance</th></tr></thead><tbody id="driver-sum-body"></tbody></table></div>
           <div id="sum-transporter-sum" class="hidden"><table class="table"><thead><tr><th>Transporter</th><th>Trips</th><th>Billed</th><th>Received</th><th>Pending</th></tr></thead><tbody id="transporter-sum-body"></tbody></table></div>
+          <div id="sum-maint-amount" class="hidden">
+            <div style="padding:8px 0 4px;font-size:12px;color:var(--text3)">"Maintenance Amount" is the per-km maintenance charge collected via trips (km × maint/km rate). Compare it against actual maintenance spend to see your buffer or deficit per vehicle.</div>
+            <div style="overflow-x:auto"><table class="table"><thead><tr><th>Vehicle</th><th>Total KM</th><th>Maint Collected (₹)</th><th>Actual Spend (₹)</th><th>Balance</th></tr></thead><tbody id="maint-amount-body"></tbody><tfoot id="maint-amount-foot"></tfoot></table></div>
+          </div>
         </div>
       </div>
 
