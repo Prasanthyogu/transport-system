@@ -1305,7 +1305,8 @@ function renderTrips() {
     const i=db.trips.indexOf(t);
     const fuel=t.km>0?Math.round((t.km/t.mileage)*t.dprice):0;
     const maint=Math.round(t.km*t.maintKm);
-    const profit=t.freight-fuel-maint;
+    const drvSal=t.tripSalary||0;
+    const profit=t.freight-fuel-maint-drvSal;
     return `<tr>
       <td><span class="mono text-accent">${t.num}</span></td>
       <td>${t.date}</td><td>${t.vehicle}</td><td>${t.driver}</td>
@@ -2125,7 +2126,7 @@ function renderMonthlyReport() {
   tbody.innerHTML=trips.map(t=>{
     const fuel=t.km>0?Math.round((t.km/t.mileage)*t.dprice):0;
     const maint=Math.round(t.km*t.maintKm);
-    const profit=t.freight-fuel-maint;
+    const profit=t.freight-fuel-maint-(t.tripSalary||0);
     return `<tr><td><span class="mono text-accent">${t.num}</span></td><td>${t.date}</td>
       <td>${t.vehicle}</td><td>${t.from}→${t.to}</td><td class="mono">${t.km.toLocaleString()}</td>
       <td>₹${t.freight.toLocaleString()}</td><td class="text-red">₹${(fuel+maint).toLocaleString()}</td>
@@ -2145,12 +2146,44 @@ function setLoanTab(el,tab){
 }
 function setSumTab(el,tab){
   document.querySelectorAll('#page-summary .tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
-  ['pnl','trip-sum','vehicle-sum','driver-sum','transporter-sum'].forEach(t=>{const e=document.getElementById('sum-'+t);if(e)e.classList.toggle('hidden',t!==tab);});
+  ['pnl','trip-sum','vehicle-sum','driver-sum','transporter-sum','maint-amount'].forEach(t=>{const e=document.getElementById('sum-'+t);if(e)e.classList.toggle('hidden',t!==tab);});
   if(tab==='pnl') renderPnL();
   else if(tab==='trip-sum') renderTripSummary();
   else if(tab==='vehicle-sum') renderVehicleSummary();
   else if(tab==='driver-sum') renderDriverSummary();
   else if(tab==='transporter-sum') renderTransporterSummary();
+  else if(tab==='maint-amount') renderMaintAmountSummary();
+}
+function renderMaintAmountSummary() {
+  const mf = getSumMonth();
+  const tbody = document.getElementById('maint-amount-body'); if (!tbody) return;
+  const grandCollected = {val:0}, grandActual = {val:0};
+  tbody.innerHTML = db.vehicles.map(v => {
+    const vT = db.trips.filter(t => t.vehicle===v.reg && (!mf||(t.date&&t.date.startsWith(mf))));
+    const km = vT.reduce((s,t)=>s+t.km, 0);
+    const collected = vT.reduce((s,t)=>s+Math.round(t.km*(t.maintKm||0)), 0);
+    const actual = db.maintenance.filter(m=>m.vehicle===v.reg && (!mf||(m.date&&m.date.startsWith(mf)))).reduce((s,m)=>s+(m.parts||0)+(m.labour||0), 0);
+    const bal = collected - actual;
+    grandCollected.val += collected;
+    grandActual.val += actual;
+    return `<tr>
+      <td><b>${v.reg}</b></td>
+      <td class="mono">${km.toLocaleString()} km</td>
+      <td class="mono text-amber">₹${collected.toLocaleString()}</td>
+      <td class="mono text-red">₹${actual.toLocaleString()}</td>
+      <td class="mono ${bal>=0?'text-green':'text-red'}">₹${Math.abs(bal).toLocaleString()} ${bal>=0?'surplus':'deficit'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;padding:14px;color:var(--text3)">No vehicles</td></tr>';
+  const foot = document.getElementById('maint-amount-foot');
+  if (foot) {
+    const grandBal = grandCollected.val - grandActual.val;
+    foot.innerHTML = `<tr style="font-weight:600;border-top:2px solid var(--border)">
+      <td>TOTAL</td><td>—</td>
+      <td class="mono text-amber">₹${grandCollected.val.toLocaleString()}</td>
+      <td class="mono text-red">₹${grandActual.val.toLocaleString()}</td>
+      <td class="mono ${grandBal>=0?'text-green':'text-red'}">₹${Math.abs(grandBal).toLocaleString()} ${grandBal>=0?'surplus':'deficit'}</td>
+    </tr>`;
+  }
 }
 function renderPendingBills() {
   const mf = getRepMonth();
