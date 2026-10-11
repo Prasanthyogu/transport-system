@@ -2,47 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FleetOps TMS — Transport Management System</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
-<style>
-  /* ── Loading Overlay ── */
-  #loading-overlay {
-    position: fixed; inset: 0;
-    background: var(--bg, #0d0d0f);
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    z-index: 9999; gap: 16px;
-  }
-  #loading-overlay.hidden { display: none; }
-  .loading-spinner {
-    width: 36px; height: 36px;
-    border: 3px solid rgba(255,255,255,0.1);
-    border-top-color: #7c6af7;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-text { font-size: 13px; color: #888; font-family: 'IBM Plex Mono', monospace; }
-
-  /* ── DB Config Banner (shown when credentials are missing) ── */
-  #config-banner {
-    position: fixed; top: 0; left: 0; right: 0;
-    background: #f59e0b; color: #000;
-    padding: 10px 20px; font-size: 13px;
-    font-family: 'IBM Plex Sans', sans-serif;
-    display: flex; align-items: center; gap: 12px;
-    z-index: 8888;
-  }
-  #config-banner.hidden { display: none; }
-  #config-banner b { font-weight: 600; }
-  #config-banner code {
-    background: rgba(0,0,0,0.15); padding: 2px 6px;
-    border-radius: 4px; font-family: monospace; font-size: 12px;
-  }
-</style>
 </head>
 <body>
 
@@ -59,47 +23,83 @@
 
 <!-- LOGIN PAGE -->
 <div id="login-page">
-  <div class="login-container">
-    <div class="login-logo">
-      <div class="logo-icon-lg">FO</div>
-      <div>
-        <div class="login-title">FleetOps TMS</div>
-        <div class="login-sub">Transport Management System</div>
+  <div class="login-shell">
+    <aside class="login-brand">
+      <div class="login-brand-top">
+        <div class="logo-icon-lg">FO</div>
+        <div>
+          <div class="login-title">FleetOps</div>
+          <div class="login-sub">Enterprise TMS</div>
+        </div>
       </div>
-    </div>
-    <div class="login-card">
-      <div class="form-group" style="margin-bottom:14px">
-        <label>Username</label>
-        <input type="text" id="login-user" placeholder="admin" value="admin">
+      <div class="login-brand-body">
+        <h2>One command surface for every trip, invoice and rupee.</h2>
+        <p>Dispatch, bill and reconcile your fleet operation without leaving the workspace.</p>
+        <ul class="login-points">
+          <li><span class="lp-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg></span><div class="lp-copy"><b>Trip dispatch &amp; profitability</b><span>Margin per trip, with fuel and maintenance cost built in.</span></div></li>
+          <li><span class="lp-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg></span><div class="lp-copy"><b>Billing &amp; receivables</b><span>Invoices, part-payments and balances due by transporter.</span></div></li>
+          <li><span class="lp-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg></span><div class="lp-copy"><b>Fleet &amp; driver registry</b><span>Vehicles, licences, EMIs and salary ledgers in one place.</span></div></li>
+        </ul>
       </div>
-      <div class="form-group" style="margin-bottom:20px">
-        <label>Password</label>
-        <input type="password" id="login-pass" placeholder="••••••••" value="password">
+      <div class="login-brand-foot">FleetOps TMS &middot; Transport Management System</div>
+    </aside>
+
+    <main class="login-panel">
+      <div class="login-container">
+        <div class="login-mobile-brand">
+          <div class="logo-icon-lg">FO</div>
+          <div>
+            <div class="login-title">FleetOps</div>
+            <div class="login-sub">Enterprise TMS</div>
+          </div>
+        </div>
+        <div class="login-card" id="login-card">
+          <div class="login-head">
+            <h1 class="login-heading">Sign in</h1>
+            <p>Access your operations workspace.</p>
+          </div>
+          <div class="form-group">
+            <label for="login-user">Username</label>
+            <div class="input-wrap">
+              <span class="input-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+              <input type="text" id="login-user" placeholder="admin" value="admin" autocomplete="username" spellcheck="false" autofocus>
+            </div>
+          </div>
+          <div class="form-group">
+            <div class="label-row">
+              <label for="login-pass">Password</label>
+              <span class="caps-hint hidden" id="caps-hint">Caps Lock is on</span>
+            </div>
+            <div class="input-wrap has-action">
+              <span class="input-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+              <input type="password" id="login-pass" placeholder="••••••••" value="password" autocomplete="current-password">
+              <button type="button" class="input-action" id="pass-toggle" onclick="togglePassword()" aria-label="Show password" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+            </div>
+          </div>
+          <div id="login-error" class="login-error" role="alert"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg><span>Invalid credentials. Try admin / password</span></div>
+          <button class="btn btn-primary btn-block btn-lg" id="login-btn" type="button" onclick="doLogin()">Sign In</button>
+        </div>
+        <div class="login-hint"><span>Demo access</span><code>admin</code><code>password</code></div>
       </div>
-      <button class="btn btn-primary" style="width:100%;padding:10px" onclick="doLogin()">Sign In</button>
-      <div id="login-error" style="color:var(--red);font-size:12px;margin-top:8px;text-align:center;display:none">Invalid credentials. Try admin / password</div>
-    </div>
-    <div style="text-align:center;font-size:11px;color:var(--text3);margin-top:16px">Demo: admin / password</div>
+    </main>
   </div>
 </div>
-
-<!-- MOBILE NAV OVERLAY -->
-<div id="mobile-overlay" onclick="toggleSidebar()"></div>
 
 <!-- MAIN APP -->
 <div id="app" style="display:none">
 <div class="app">
 
+  <div class="nav-scrim" onclick="toggleSidebar()"></div>
+
   <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
-    <div class="sidebar-glow"></div>
     <div class="logo">
       <div class="logo-icon">FO</div>
       <div class="brand-copy">
         <div class="logo-text">FleetOps</div>
         <div class="logo-sub">Enterprise TMS</div>
       </div>
-      <button class="sidebar-toggle" type="button" onclick="toggleSidebar()" title="Collapse sidebar">‹</button>
+      <button class="sidebar-toggle" type="button" onclick="toggleSidebar()" title="Collapse sidebar" aria-label="Toggle sidebar">‹</button>
     </div>
     <div class="workspace-card">
       <div class="workspace-avatar">AX</div>
@@ -108,37 +108,38 @@
         <div class="workspace-meta"><span class="live-dot"></span>Ops command live</div>
       </div>
     </div>
+    <div class="sidebar-status"><span id="sb-status">Live</span><span class="sidebar-units" id="sb-units"></span></div>
     <nav class="nav">
       <div class="nav-section">Overview</div>
-      <div class="nav-item active" onclick="showPage('dashboard')"><span class="nav-icon">⌁</span><span class="nav-label">Dashboard</span></div>
+      <div class="nav-item active" onclick="showPage('dashboard')" role="button" tabindex="0" title="Dashboard"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></span><span class="nav-label">Dashboard</span></div>
 
       <div class="nav-section">Operations</div>
-      <div class="nav-item" onclick="showPage('trips')"><span class="nav-icon">↗</span><span class="nav-label">Trips</span></div>
-      <div class="nav-item" onclick="showPage('expenses')"><span class="nav-icon">◈</span><span class="nav-label">Expenses</span></div>
-      <div class="nav-item" onclick="showPage('billing')"><span class="nav-icon">▣</span><span class="nav-label">Billing</span></div>
-      <div class="nav-item" onclick="showPage('maintenance')"><span class="nav-icon">⚙</span><span class="nav-label">Maintenance</span></div>
+      <div class="nav-item" onclick="showPage('trips')" role="button" tabindex="0" title="Trips"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg></span><span class="nav-label">Trips</span></div>
+      <div class="nav-item" onclick="showPage('expenses')" role="button" tabindex="0" title="Expenses"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg></span><span class="nav-label">Expenses</span></div>
+      <div class="nav-item" onclick="showPage('billing')" role="button" tabindex="0" title="Billing"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg></span><span class="nav-label">Billing</span></div>
+      <div class="nav-item" onclick="showPage('maintenance')" role="button" tabindex="0" title="Maintenance"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span><span class="nav-label">Maintenance</span></div>
 
-      <div class="nav-section">Data</div>
-      <div class="nav-item" onclick="showPage('vehicles')"><span class="nav-icon">▰</span><span class="nav-label">Vehicles</span></div>
-      <div class="nav-item" onclick="showPage('drivers')"><span class="nav-icon">◎</span><span class="nav-label">Drivers</span></div>
-      <div class="nav-item" onclick="showPage('transporters')"><span class="nav-icon">◇</span><span class="nav-label">Transporters</span></div>
+      <div class="nav-section">Data Registry</div>
+      <div class="nav-item" onclick="showPage('vehicles')" role="button" tabindex="0" title="Vehicles"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg></span><span class="nav-label">Vehicles</span></div>
+      <div class="nav-item" onclick="showPage('drivers')" role="button" tabindex="0" title="Drivers"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span><span class="nav-label">Drivers</span></div>
+      <div class="nav-item" onclick="showPage('transporters')" role="button" tabindex="0" title="Transporters"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg></span><span class="nav-label">Transporters</span></div>
 
       <div class="nav-section">Finance</div>
-      <div class="nav-item" onclick="showPage('loans')"><span class="nav-icon">◆</span><span class="nav-label">Loans</span></div>
-      <div class="nav-item" onclick="showPage('payments')"><span class="nav-icon">◐</span><span class="nav-label">Payments</span></div>
-      <div class="nav-item" onclick="showPage('summary')"><span class="nav-icon">▤</span><span class="nav-label">Summary</span></div>
-      <div class="nav-item" onclick="showPage('reports')"><span class="nav-icon">▥</span><span class="nav-label">Reports</span></div>
+      <div class="nav-item" onclick="showPage('loans')" role="button" tabindex="0" title="Loans"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg></span><span class="nav-label">Loans</span></div>
+      <div class="nav-item" onclick="showPage('payments')" role="button" tabindex="0" title="Payments"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg></span><span class="nav-label">Payments</span></div>
+      <div class="nav-item" onclick="showPage('summary')" role="button" tabindex="0" title="Summary"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12c.552 0 1.005-.449.95-.998a10 10 0 0 0-8.953-8.951c-.55-.055-.998.398-.998.95v8a1 1 0 0 0 1 1z"/><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/></svg></span><span class="nav-label">Summary</span></div>
+      <div class="nav-item" onclick="showPage('reports')" role="button" tabindex="0" title="Reports"><span class="nav-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></span><span class="nav-label">Reports</span></div>
     </nav>
     <div class="sidebar-footer">
-      <div class="system-pill"><span class="live-dot"></span><span id="sb-status">Live</span></div>
       <div class="profile-card">
         <div class="profile-avatar">AU</div>
         <div class="profile-copy">
           <div class="profile-name">Admin User</div>
           <div class="profile-role">Operations lead</div>
         </div>
+        <button class="profile-menu-btn" type="button" id="profile-menu-btn" onclick="toggleProfileMenu(event)" aria-label="Account actions" aria-expanded="false" aria-controls="sidebar-actions" title="Account actions"><svg viewBox="0 0 24 24" aria-hidden="true"><line x1="21" x2="14" y1="4" y2="4"/><line x1="10" x2="3" y1="4" y2="4"/><line x1="21" x2="12" y1="12" y2="12"/><line x1="8" x2="3" y1="12" y2="12"/><line x1="21" x2="16" y1="20" y2="20"/><line x1="12" x2="3" y1="20" y2="20"/><line x1="14" x2="14" y1="2" y2="6"/><line x1="8" x2="8" y1="10" y2="14"/><line x1="16" x2="16" y1="18" y2="22"/></svg></button>
       </div>
-      <div class="sidebar-actions">
+      <div class="sidebar-actions hidden" id="sidebar-actions">
         <button type="button" onclick="clearAllData()">Clear data</button>
         <button type="button" onclick="resetDemoData()">Reset demo</button>
         <button type="button" onclick="doLogout()">Sign out</button>
@@ -149,40 +150,39 @@
   <!-- MAIN CONTENT -->
   <div class="main">
     <div class="topbar">
-      <button class="hamburger-btn btn btn-ghost" onclick="toggleSidebar()" title="Menu" aria-label="Toggle navigation">
-        <span class="hamburger-lines"><span></span><span></span><span></span></span>
-      </button>
+      <button class="btn btn-ghost btn-sm topbar-menu" type="button" onclick="toggleSidebar()" aria-label="Open navigation"><svg viewBox="0 0 24 24" aria-hidden="true"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg></button>
       <div class="topbar-heading">
         <div class="topbar-eyebrow">Mission Control</div>
         <span class="topbar-title" id="page-title">Dashboard</span>
       </div>
       <div class="search-shell">
-        <span class="search-icon">⌕</span>
-        <input class="topbar-search" placeholder="Search trips, vehicles, drivers..." />
-        <kbd>Ctrl K</kbd>
+        <span class="search-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
+        <input class="topbar-search" id="global-search" type="search" autocomplete="off" aria-label="Search" aria-controls="search-results" placeholder="Search trips, vehicles, drivers..." />
+        <kbd id="search-kbd">Ctrl K</kbd>
+        <div class="search-results hidden" id="search-results" role="listbox"></div>
       </div>
       <button class="btn btn-ghost btn-sm" id="theme-toggle" onclick="toggleTheme()" title="Toggle theme">☀ Light</button>
       <div class="export-wrapper">
         <button class="btn btn-ghost btn-sm" onclick="toggleExportMenu(event)">↓ Export CSV ▾</button>
         <div class="export-menu hidden" id="export-menu">
-          <div class="export-item" onclick="exportCSV('trips')">Trips</div>
-          <div class="export-item" onclick="exportCSV('expenses-diesel')">Diesel Expenses</div>
-          <div class="export-item" onclick="exportCSV('expenses-fastag')">Fastag Expenses</div>
-          <div class="export-item" onclick="exportCSV('expenses-adblue')">Adblue Records</div>
-          <div class="export-item" onclick="exportCSV('expenses-other')">Other Expenses</div>
-          <div class="export-item" onclick="exportCSV('billing')">Invoices / Billing</div>
-          <div class="export-item" onclick="exportCSV('maintenance')">Maintenance</div>
-          <div class="export-item" onclick="exportCSV('vehicles')">Vehicles</div>
-          <div class="export-item" onclick="exportCSV('drivers')">Drivers</div>
-          <div class="export-item" onclick="exportCSV('transporters')">Transporters</div>
-          <div class="export-item" onclick="exportCSV('loans')">Vehicle Loans</div>
-          <div class="export-item" onclick="exportCSV('private-loans')">Private Loans</div>
-          <div class="export-item" onclick="exportCSV('repayments')">Repayments</div>
+          <div class="export-item" role="button" tabindex="0" onclick="exportCSV('trips')">Trips</div>
+          <div class="export-item" role="button" tabindex="0" onclick="exportCSV('expenses-diesel')">Diesel Expenses</div>
+          <div class="export-item" role="button" tabindex="0" onclick="exportCSV('expenses-fastag')">Fastag Expenses</div>
+          <div class="export-item" role="button" tabindex="0" onclick="exportCSV('expenses-adblue')">Adblue Records</div>
+          <div class="export-item" role="button" tabindex="0" onclick="exportCSV('expenses-other')">Other Expenses</div>
+          <div class="export-item" role="button" tabindex="0" onclick="exportCSV('billing')">Invoices / Billing</div>
+          <div class="export-item" role="button" tabindex="0" onclick="exportCSV('maintenance')">Maintenance</div>
+          <div class="export-item" role="button" tabindex="0" onclick="exportCSV('vehicles')">Vehicles</div>
+          <div class="export-item" role="button" tabindex="0" onclick="exportCSV('drivers')">Drivers</div>
+          <div class="export-item" role="button" tabindex="0" onclick="exportCSV('transporters')">Transporters</div>
+          <div class="export-item" role="button" tabindex="0" onclick="exportCSV('loans')">Vehicle Loans</div>
+          <div class="export-item" role="button" tabindex="0" onclick="exportCSV('private-loans')">Private Loans</div>
+          <div class="export-item" role="button" tabindex="0" onclick="exportCSV('repayments')">Repayments</div>
           <div class="export-divider"></div>
-          <div class="export-item export-all" onclick="exportCSV('all')">⬇ Export All Sections</div>
+          <div class="export-item export-all" role="button" tabindex="0" onclick="exportCSV('all')">⬇ Export All Sections</div>
         </div>
       </div>
-      <button class="btn btn-ghost btn-sm topbar-icon" type="button" title="Notifications">◌<span class="notify-dot"></span></button>
+      <button class="btn btn-ghost btn-sm topbar-icon" type="button" title="Notifications" aria-label="Notifications"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="notify-dot"></span></button>
       <button class="btn btn-primary btn-sm" id="topbar-action" onclick="handleTopAction()">+ New Trip</button>
     </div>
 
@@ -190,79 +190,134 @@
 
       <!-- ========== DASHBOARD ========== -->
       <div id="page-dashboard" class="dashboard-page">
-        <section class="ops-hero">
-          <div>
-            <div class="eyebrow">Fleet Operations Command</div>
+
+        <!-- Hero -->
+        <section class="dash-hero">
+          <div class="dash-hero-copy">
+            <span class="hero-pill"><span class="live-dot"></span>Fleet Operations Command</span>
             <h1>Enterprise logistics health at a glance.</h1>
             <p>Live revenue, utilization, trip execution, and finance exposure across the operating network.</p>
           </div>
-          <div class="hero-metrics">
-            <div><span id="hero-trips">—</span><small>Trips</small></div>
-            <div><span id="hero-vehicles">—</span><small>Fleet</small></div>
-            <div><span id="hero-drivers">—</span><small>Drivers</small></div>
+          <div class="dash-hero-side">
+            <div class="hero-strip">
+              <div><span id="hero-trips">—</span><small>Trips</small></div>
+              <div><span id="hero-vehicles">—</span><small>Fleet Units</small></div>
+              <div><span id="hero-drivers">—</span><small>Drivers Active</small></div>
+            </div>
+            <button class="btn btn-soft" type="button" onclick="openNewTrip()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Dispatch New Trip</button>
           </div>
         </section>
-        <div class="stat-grid">
-          <div class="stat-card metric-active">
-            <div class="stat-top"><div class="stat-label">Active Trips</div><span class="trend-pill trend-up">Live</span></div>
-            <div class="stat-value" id="d-active-trips">—</div>
-            <div class="stat-sub stat-up" id="d-active-sub">Loading…</div>
-            <div class="mini-chart"><span style="height:42%"></span><span style="height:74%"></span><span style="height:54%"></span><span style="height:82%"></span><span style="height:68%"></span><span style="height:92%"></span></div>
-          </div>
-          <div class="stat-card metric-revenue">
-            <div class="stat-top"><div class="stat-label">Revenue MTD</div><span class="trend-pill trend-up" id="d-revenue-trend">+0%</span></div>
-            <div class="stat-value text-accent" id="d-revenue">—</div>
-            <div class="stat-sub stat-up" id="d-revenue-sub">All trips</div>
-            <div class="sparkline"></div>
-          </div>
-          <div class="stat-card metric-util">
-            <div class="stat-top"><div class="stat-label">Fleet Utilization</div><span class="trend-pill">Capacity</span></div>
-            <div class="stat-value" id="d-util">—</div>
-            <div class="stat-sub" id="d-util-sub">Loading…</div>
-            <div class="progress-track"><span id="d-util-bar"></span></div>
-          </div>
-          <div class="stat-card metric-risk">
-            <div class="stat-top"><div class="stat-label">Pending Bills</div><span class="trend-pill trend-down">AR</span></div>
-            <div class="stat-value text-red" id="d-pending">—</div>
-            <div class="stat-sub stat-down" id="d-pending-sub">Loading…</div>
-            <div class="risk-band"><span></span><span></span><span></span></div>
-          </div>
+
+        <!-- KPI cards -->
+        <div class="kpi-grid">
+          <article class="kpi-card">
+            <div class="kpi-top"><span class="kpi-label">Active Trips</span><span class="badge badge-blue" id="d-active-pill">—</span></div>
+            <div class="kpi-value"><span id="d-active-trips">—</span><small id="d-active-of"></small></div>
+            <div class="kpi-sub" id="d-active-sub">Loading…</div>
+            <div class="kpi-meter">
+              <div class="seg-bar" id="d-active-seg"></div>
+              <div class="kpi-foot"><span>Fleet deployed</span><b id="d-active-foot">—</b></div>
+            </div>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-top"><span class="kpi-label">Freight Revenue</span><span class="badge badge-blue" id="d-revenue-trend">All trips</span></div>
+            <div class="kpi-value"><span id="d-revenue">—</span><small>INR</small></div>
+            <div class="kpi-sub" id="d-revenue-sub">Loading…</div>
+            <div class="kpi-meter">
+              <div class="kpi-bar"><span id="d-revenue-bar"></span></div>
+              <div class="kpi-foot"><span>Invoices collected</span><b id="d-revenue-foot">—</b></div>
+            </div>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-top"><span class="kpi-label">Fleet Utilization</span><span class="badge badge-blue">Capacity</span></div>
+            <div class="kpi-value"><span id="d-util">—</span><small id="d-util-of"></small></div>
+            <div class="kpi-sub" id="d-util-sub">Loading…</div>
+            <div class="kpi-meter">
+              <div class="kpi-bar" id="d-util-track"><span id="d-util-bar"></span></div>
+            </div>
+          </article>
+          <article class="kpi-card">
+            <div class="kpi-top"><span class="kpi-label">Pending / Exposure</span><span class="badge badge-blue" id="d-pending-pill">—</span></div>
+            <div class="kpi-value"><span id="d-pending">—</span><small id="d-pending-of"></small></div>
+            <div class="kpi-sub" id="d-pending-sub">Loading…</div>
+            <div class="kpi-meter">
+              <span class="kpi-status" id="d-pending-foot"></span>
+            </div>
+          </article>
         </div>
 
         <div class="dashboard-grid">
+          <!-- Weekly yield chart -->
           <div class="analytics-panel revenue-panel">
             <div class="panel-header">
-              <div><span class="table-title">Monthly Performance</span><p>Revenue, cost pressure, and operating margin</p></div>
-              <span class="chip">MTD</span>
+              <div>
+                <div class="yield-title"><span class="table-title">Weekly Freight Yield</span><span class="chip">Last 8 weeks</span></div>
+                <p>Weekly dispatch cycles and gross freight realization</p>
+              </div>
+              <div class="legend">
+                <span><i class="lg lg-yield"></i>Realized Yield</span>
+                <span><i class="lg lg-peak"></i>Peak Week</span>
+                <span><i class="lg lg-trend"></i>3-wk Trend</span>
+              </div>
             </div>
-            <div class="chart-shell" id="revenue-chart"></div>
+            <div class="yield-chart" id="revenue-chart"></div>
+            <div class="mini-stats">
+              <div><small>Avg Trip Yield</small><b id="m-yield">—</b></div>
+              <div><small>Gross Operating Margin</small><b id="m-margin">—</b></div>
+              <div><small>Avg Trip Distance</small><b id="m-km">—</b></div>
+              <div><small>Completion Rate</small><b id="m-complete">—</b></div>
+            </div>
           </div>
+
+          <!-- Operational insights -->
           <div class="analytics-panel insights-panel">
             <div class="panel-header">
-              <div><span class="table-title">Operational Insights</span><p>Fleet, driver, and expense signals</p></div>
+              <div><span class="table-title">Operational Insights</span><p>Asset deployment and cost outflow</p></div>
             </div>
             <div class="insight-list">
-              <div class="pl-row"><span>Total Vehicles</span><span class="mono" id="qs-vehicles">—</span></div>
-              <div class="pl-row"><span>Active Drivers</span><span class="mono" id="qs-drivers">—</span></div>
-              <div class="pl-row"><span>Total Trips</span><span class="mono" id="qs-trips">—</span></div>
-              <div class="pl-row"><span>Diesel Cost</span><span class="mono text-red" id="qs-diesel">—</span></div>
-              <div class="pl-row"><span>Fastag Cost</span><span class="mono text-red" id="qs-fastag">—</span></div>
-              <div class="pl-row"><span>Maintenance Cost</span><span class="mono text-amber" id="qs-maint">—</span></div>
+              <div class="insight-row"><span class="insight-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>Total Vehicles</span><span class="insight-val"><b id="qs-vehicles">—</b><small id="qs-vehicles-sub"></small></span></div>
+              <div class="insight-row"><span class="insight-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Roster Drivers</span><span class="insight-val"><b id="qs-drivers">—</b><small id="qs-drivers-sub"></small></span></div>
+              <div class="insight-row"><span class="insight-label"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></svg>Executed Trips</span><span class="insight-val"><b id="qs-trips">—</b><small id="qs-trips-sub"></small></span></div>
+              <div class="insight-row"><span class="insight-label"><svg viewBox="0 0 24 24" aria-hidden="true"><line x1="3" x2="15" y1="22" y2="22"/><line x1="4" x2="14" y1="9" y2="9"/><path d="M14 22V4a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></svg>Diesel Fuel Burn</span><span class="insight-val"><b id="qs-diesel">—</b><small id="qs-diesel-sub"></small></span></div>
+              <div class="insight-row"><span class="insight-label"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>Fastag Electronic Toll</span><span class="insight-val"><b id="qs-fastag">—</b><small id="qs-fastag-sub"></small></span></div>
+              <div class="insight-row"><span class="insight-label"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>Maintenance &amp; Spares</span><span class="insight-val"><b id="qs-maint">—</b><small id="qs-maint-sub"></small></span></div>
+            </div>
+            <div class="surplus-box">
+              <div><small>Net Operating Surplus</small><b id="qs-surplus">—</b></div>
+              <div class="surplus-ratio"><small>Cost / Revenue</small><b id="qs-ratio">—</b></div>
             </div>
           </div>
+
+          <!-- Recent trip manifests -->
           <div class="analytics-panel recent-panel">
             <div class="panel-header">
-              <div><span class="table-title">Recent Trips</span><p>Latest execution activity</p></div>
-              <button class="btn btn-ghost btn-sm" onclick="showPage('trips')">View all</button>
+              <div>
+                <div class="yield-title"><span class="table-title">Recent Trip Manifests</span><span class="chip" id="dash-trips-count">—</span></div>
+                <p>Latest freight manifests and execution status</p>
+                <div class="filter-bar manifest-filter">
+                  <label class="manifest-search"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input id="dash-trip-filter" type="search" placeholder="Filter manifests…" oninput="dashFilterTrips()" autocomplete="off" aria-label="Filter manifests"></label>
+                  <button class="btn btn-ghost btn-sm" type="button" onclick="showPage('trips')">View All →</button>
+                </div>
+              </div>
             </div>
-            <table class="table compact-table">
-              <thead><tr><th>Trip</th><th>Vehicle</th><th>Route</th><th>Status</th></tr></thead>
-              <tbody id="dash-trips-body"><tr><td colspan="4" class="empty-cell">Loading…</td></tr></tbody>
-            </table>
+            <div class="table-scroll"><table class="table compact-table">
+              <thead><tr><th>Trip ID</th><th>Vehicle Plate</th><th>Corridor / Route</th><th>Date</th><th>Status</th></tr></thead>
+              <tbody id="dash-trips-body"><tr><td colspan="5" class="empty-cell">Loading…</td></tr></tbody>
+            </table></div>
+            <div class="pager">
+              <span id="dash-pager-info">—</span>
+              <div class="pager-ctrl">
+                <button class="icon-btn" type="button" id="dash-prev" onclick="dashPage(-1)" aria-label="Previous page">‹</button>
+                <span id="dash-page-label">Page 1 of 1</span>
+                <button class="icon-btn" type="button" id="dash-next" onclick="dashPage(1)" aria-label="Next page">›</button>
+              </div>
+            </div>
           </div>
+
+          <!-- Live operation feed -->
           <div class="analytics-panel activity-panel">
             <div class="panel-header">
-              <div><span class="table-title">Activity Feed</span><p>Real-time operation pulse</p></div>
+              <div><span class="table-title feed-title"><span class="live-dot"></span>Live Operation Feed</span><p>Latest trips, invoices, payments and expenses</p></div>
             </div>
             <div class="activity-feed" id="activity-feed"></div>
           </div>
@@ -301,41 +356,41 @@
         <div class="table-card">
           <div class="table-header">
             <div class="tab-group">
-              <div class="tab active" onclick="setExpenseTab(this,'diesel')">Diesel</div>
-              <div class="tab" onclick="setExpenseTab(this,'fastag')">Fastag</div>
-              <div class="tab" onclick="setExpenseTab(this,'adblue')">Adblue</div>
-              <div class="tab" onclick="setExpenseTab(this,'other')">Other</div>
-              <div class="tab" onclick="setExpenseTab(this,'driver-sal')">Driver Salaries</div>
+              <div class="tab active" role="button" tabindex="0" onclick="setExpenseTab(this,'diesel')">Diesel</div>
+              <div class="tab" role="button" tabindex="0" onclick="setExpenseTab(this,'fastag')">Fastag</div>
+              <div class="tab" role="button" tabindex="0" onclick="setExpenseTab(this,'adblue')">Adblue</div>
+              <div class="tab" role="button" tabindex="0" onclick="setExpenseTab(this,'other')">Other</div>
+              <div class="tab" role="button" tabindex="0" onclick="setExpenseTab(this,'driver-sal')">Driver Salaries</div>
             </div>
-            <div style="display:flex;gap:8px">
+            <div class="header-actions">
               <button class="btn btn-ghost btn-sm" onclick="openNewExpenseFastag()">+ Fastag</button>
               <button class="btn btn-ghost btn-sm" onclick="openNewAdblue()">+ Adblue</button>
               <button class="btn btn-ghost btn-sm" onclick="openNewOtherExpense()">+ Other</button>
             </div>
           </div>
           <div id="exp-diesel">
-            <table class="table"><thead><tr><th>Date</th><th>Vehicle</th><th>Trip#</th><th>Litres</th><th>Rate</th><th>Amount</th><th>Location</th><th>Actions</th></tr></thead>
-            <tbody id="diesel-table-body"></tbody></table>
+            <div class="table-scroll"><table class="table"><thead><tr><th>Date</th><th>Vehicle</th><th>Trip#</th><th>Litres</th><th>Rate</th><th>Amount</th><th>Location</th><th>Actions</th></tr></thead>
+            <tbody id="diesel-table-body"></tbody></table></div>
           </div>
           <div id="exp-fastag" class="hidden">
-            <table class="table"><thead><tr><th>Date</th><th>Vehicle</th><th>Trip#</th><th>Toll Plaza</th><th>Amount</th><th>Actions</th></tr></thead>
-            <tbody id="fastag-table-body"></tbody></table>
+            <div class="table-scroll"><table class="table"><thead><tr><th>Date</th><th>Vehicle</th><th>Trip#</th><th>Toll Plaza</th><th>Amount</th><th>Actions</th></tr></thead>
+            <tbody id="fastag-table-body"></tbody></table></div>
           </div>
           <div id="exp-adblue" class="hidden">
-            <div style="padding:8px 16px;font-size:12px;color:var(--text3);display:flex;gap:24px">
+            <div class="table-meta">
               <span>Avg km/refill: <b id="ab-avg">—</b></span>
               <span>Total spend: <b id="ab-total">—</b></span>
             </div>
-            <table class="table"><thead><tr><th>Date</th><th>Vehicle</th><th>Cur KM</th><th>Prev KM</th><th>KM Used</th><th>Next Est.</th><th>Amount</th><th>Actions</th></tr></thead>
-            <tbody id="adblue-table-body"></tbody></table>
+            <div class="table-scroll"><table class="table"><thead><tr><th>Date</th><th>Vehicle</th><th>Cur KM</th><th>Prev KM</th><th>KM Used</th><th>Next Est.</th><th>Amount</th><th>Actions</th></tr></thead>
+            <tbody id="adblue-table-body"></tbody></table></div>
           </div>
           <div id="exp-other" class="hidden">
-            <table class="table"><thead><tr><th>Date</th><th>Vehicle</th><th>Trip#</th><th>Category</th><th>Description</th><th>Amount</th><th>Actions</th></tr></thead>
-            <tbody id="other-table-body"></tbody></table>
+            <div class="table-scroll"><table class="table"><thead><tr><th>Date</th><th>Vehicle</th><th>Trip#</th><th>Category</th><th>Description</th><th>Amount</th><th>Actions</th></tr></thead>
+            <tbody id="other-table-body"></tbody></table></div>
           </div>
           <div id="exp-driver-sal" class="hidden">
-            <table class="table"><thead><tr><th>Date</th><th>Trip#</th><th>Driver</th><th>Vehicle</th><th>Route</th><th>Salary</th><th>Status</th></tr></thead>
-            <tbody id="driver-sal-body"></tbody></table>
+            <div class="table-scroll"><table class="table"><thead><tr><th>Date</th><th>Trip#</th><th>Driver</th><th>Vehicle</th><th>Route</th><th>Salary</th><th>Status</th></tr></thead>
+            <tbody id="driver-sal-body"></tbody></table></div>
           </div>
         </div>
       </div>
@@ -344,30 +399,30 @@
       <div id="page-billing" class="hidden">
         <div class="table-card">
           <div class="table-header"><span class="table-title">Invoices</span></div>
-          <table class="table">
+          <div class="table-scroll"><table class="table">
             <thead><tr><th>Bill#</th><th>Date</th><th>Transporter</th><th>Trips</th><th>Freight</th><th>Deduction</th><th>Net Payable</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody id="billing-table-body"></tbody>
-          </table>
+          </table></div>
         </div>
       </div>
 
       <!-- ========== MAINTENANCE ========== -->
       <div id="page-maintenance" class="hidden">
-        <div style="display:grid;grid-template-columns:1fr 280px;gap:16px">
+        <div class="split-layout">
           <div class="table-card">
             <div class="table-header"><span class="table-title">Service Records</span></div>
-            <table class="table">
+            <div class="table-scroll"><table class="table">
               <thead><tr><th>Date</th><th>Vehicle</th><th>Type</th><th>Current KM</th><th>Parts</th><th>Labour</th><th>Total</th><th>Next KM</th><th>Actions</th></tr></thead>
               <tbody id="maint-table-body"></tbody>
-            </table>
+            </table></div>
           </div>
-          <div style="display:flex;flex-direction:column;gap:16px">
-            <div class="table-card" style="padding:16px">
-              <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px">Next Service Due</div>
+          <div class="stack">
+            <div class="table-card panel-pad">
+              <div class="panel-title">Next Service Due</div>
               <div id="maint-due-list"></div>
             </div>
-            <div class="table-card" style="padding:16px">
-              <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px">Cost Summary</div>
+            <div class="table-card panel-pad">
+              <div class="panel-title">Cost Summary</div>
               <div id="maint-cost-summary"></div>
             </div>
           </div>
@@ -378,7 +433,7 @@
       <div id="page-vehicles" class="hidden">
         <div class="table-card">
           <div class="table-header"><span class="table-title">Fleet</span></div>
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
           <table class="table">
             <thead><tr><th>Reg No</th><th>Type</th><th>Make/Model</th><th>Year</th><th>Own</th><th>Insurance</th><th>Permit</th><th>FC</th><th>PUC</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody id="vehicles-table-body"></tbody>
@@ -388,16 +443,16 @@
       </div>
 
       <!-- ========== DRIVERS ========== -->
-      <div id="page-drivers" class="hidden">
-        <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:14px">
+      <div id="page-drivers" class="hidden page-stack">
+        <div class="page-actions">
           <button class="btn btn-ghost btn-sm" onclick="openNewAdvance(null)">+ Give Advance</button>
           <button class="btn btn-primary btn-sm" onclick="openNewDriver()">+ Add Driver</button>
         </div>
         <div class="table-card">
           <div class="table-header"><span class="table-title">Drivers — Salary Ledger</span></div>
-          <div style="overflow-x:auto">
+          <div class="table-scroll">
           <table class="table">
-            <thead><tr><th>NAME</th><th>MOBILE</th><th>LICENSE</th><th>LIC. EXPIRY</th><th>TRIPS (DONE)</th><th>TOTAL KM</th><th>SALARY RATE</th><th>EARNED</th><th>ADVANCES</th><th>NET PAYABLE</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
+            <thead><tr><th>NAME</th><th>MOBILE</th><th>LICENSE</th><th>LIC. EXPIRY</th><th>TRIPS (DONE)</th><th>TOTAL KM</th><th>SALARY RATE</th><th>EARNED</th><th>ADVANCES</th><th>BALANCE</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
             <tbody id="drivers-table-body"></tbody>
           </table>
           </div>
@@ -408,10 +463,10 @@
       <div id="page-transporters" class="hidden">
         <div class="table-card">
           <div class="table-header"><span class="table-title">Transporters</span></div>
-          <table class="table">
+          <div class="table-scroll"><table class="table">
             <thead><tr><th>Name</th><th>Contact</th><th>Mobile</th><th>GSTIN</th><th>Trips</th><th>Billed</th><th>Received</th><th>Balance</th><th>Actions</th></tr></thead>
             <tbody id="transporters-table-body"></tbody>
-          </table>
+          </table></div>
         </div>
       </div>
 
@@ -420,59 +475,59 @@
         <div class="table-card">
           <div class="table-header">
             <div class="tab-group">
-              <div class="tab active" onclick="setLoanTab(this,'vehicle-loans')">Vehicle Loans</div>
-              <div class="tab" onclick="setLoanTab(this,'private-loans')">Private Loans</div>
-              <div class="tab" onclick="setLoanTab(this,'repayments')">Repayments</div>
+              <div class="tab active" role="button" tabindex="0" onclick="setLoanTab(this,'vehicle-loans')">Vehicle Loans</div>
+              <div class="tab" role="button" tabindex="0" onclick="setLoanTab(this,'private-loans')">Private Loans</div>
+              <div class="tab" role="button" tabindex="0" onclick="setLoanTab(this,'repayments')">Repayments</div>
             </div>
-            <div style="display:flex;gap:8px">
+            <div class="header-actions">
               <button class="btn btn-ghost btn-sm" onclick="openNewPrivateLoan()">+ Private Loan</button>
               <button class="btn btn-ghost btn-sm" onclick="openNewRepayment()">+ Record Payment</button>
             </div>
           </div>
           <div id="loan-vehicle-loans">
-            <div style="display:grid;grid-template-columns:1fr 260px;gap:16px;padding:0 0 8px">
-              <table class="table">
+            <div class="split-layout loan-split">
+              <div class="table-scroll"><table class="table">
                 <thead><tr><th>Vehicle</th><th>Financier</th><th>Principal</th><th>EMI</th><th>Tenure</th><th>Paid</th><th>Balance</th><th>Next Due</th><th>Status</th><th>Actions</th></tr></thead>
                 <tbody id="loans-table-body"></tbody>
-              </table>
-              <div class="table-card" style="padding:16px;height:fit-content">
-                <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px">Monthly EMI Summary</div>
+              </table></div>
+              <div class="table-card panel-pad">
+                <div class="panel-title">Monthly EMI Summary</div>
                 <div id="emi-summary-body"></div>
               </div>
             </div>
           </div>
           <div id="loan-private-loans" class="hidden">
-            <table class="table">
+            <div class="table-scroll"><table class="table">
               <thead><tr><th>Lender</th><th>Amount</th><th>Rate%</th><th>Date</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
               <tbody id="private-loans-body"></tbody>
-            </table>
+            </table></div>
           </div>
           <div id="loan-repayments" class="hidden">
-            <table class="table">
+            <div class="table-scroll"><table class="table">
               <thead><tr><th>Date</th><th>Type</th><th>Loan/Lender</th><th>Amount</th><th>Reference</th><th>Actions</th></tr></thead>
               <tbody id="repayments-body"></tbody>
-            </table>
+            </table></div>
           </div>
         </div>
       </div>
 
       <!-- ========== PAYMENTS ========== -->
-      <div id="page-payments" class="hidden">
+      <div id="page-payments" class="hidden page-stack">
         <!-- Summary cards row -->
-        <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px" id="pay-stat-grid">
+        <div class="stat-grid" id="pay-stat-grid">
           <div class="stat-card">
             <div class="stat-label">Total Invoiced</div>
-            <div class="stat-value" style="color:var(--accent)" id="pay-total-inv">—</div>
+            <div class="stat-value text-accent" id="pay-total-inv">—</div>
             <div class="stat-sub">All bills</div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Total Received</div>
-            <div class="stat-value" style="color:var(--green)" id="pay-total-recv">—</div>
+            <div class="stat-value text-green" id="pay-total-recv">—</div>
             <div class="stat-sub">Paid invoices</div>
           </div>
           <div class="stat-card">
             <div class="stat-label">Outstanding</div>
-            <div class="stat-value" style="color:var(--red)" id="pay-outstanding">—</div>
+            <div class="stat-value text-red" id="pay-outstanding">—</div>
             <div class="stat-sub">Pending bills</div>
           </div>
           <div class="stat-card">
@@ -482,49 +537,49 @@
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
+        <div class="split-layout">
 
           <!-- Timeline -->
           <div class="table-card">
             <div class="table-header">
               <span class="table-title">Transaction History <span class="table-count" id="pay-tx-count-label"></span></span>
-              <div style="display:flex;gap:8px;align-items:center">
-                <select id="pay-filter-transporter" onchange="renderPayments()" style="padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px">
+              <div class="header-actions">
+                <select id="pay-filter-transporter" onchange="renderPayments()" class="filter-select">
                   <option value="">All Transporters</option>
                 </select>
-                <select id="pay-filter-status" onchange="renderPayments()" style="padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px">
+                <select id="pay-filter-status" onchange="renderPayments()" class="filter-select">
                   <option value="">All Status</option>
                   <option value="Paid">Paid</option>
                   <option value="Pending">Pending</option>
                   <option value="Partial">Partial</option>
                 </select>
-                <input id="pay-search" placeholder="Search…" oninput="renderPayments()" style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px;width:130px">
+                <input id="pay-search" class="filter-input" placeholder="Search…" oninput="renderPayments()">
               </div>
             </div>
-            <div id="pay-timeline" style="padding:8px 16px 16px"></div>
+            <div id="pay-timeline" class="pay-timeline"></div>
           </div>
 
           <!-- Right panel: Add payment + by-transporter summary -->
-          <div style="display:flex;flex-direction:column;gap:16px">
+          <div class="stack">
 
             <!-- Add Payment -->
-            <div class="table-card" style="padding:16px">
-              <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px">Record Payment</div>
-              <div class="form-group" style="margin-bottom:10px">
-                <label style="font-size:11px;color:var(--text3)">Invoice</label>
-                <select id="pay-bill-select" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px" onchange="onPayBillSelect()"></select>
+            <div class="table-card panel-pad">
+              <div class="panel-title">Record Payment</div>
+              <div class="form-group">
+                <label>Invoice</label>
+                <select id="pay-bill-select" onchange="onPayBillSelect()"></select>
               </div>
-              <div class="form-group" style="margin-bottom:10px">
-                <label style="font-size:11px;color:var(--text3)">Amount Received (₹)</label>
-                <input type="number" id="pay-amount" placeholder="0" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px;box-sizing:border-box">
+              <div class="form-group">
+                <label>Amount Received (₹)</label>
+                <input type="number" id="pay-amount" placeholder="0">
               </div>
-              <div class="form-group" style="margin-bottom:10px">
-                <label style="font-size:11px;color:var(--text3)">Date</label>
-                <input type="date" id="pay-date" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px;box-sizing:border-box">
+              <div class="form-group">
+                <label>Date</label>
+                <input type="date" id="pay-date">
               </div>
-              <div class="form-group" style="margin-bottom:10px">
-                <label style="font-size:11px;color:var(--text3)">Mode</label>
-                <select id="pay-mode" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px">
+              <div class="form-group">
+                <label>Mode</label>
+                <select id="pay-mode">
                   <option>Bank Transfer</option>
                   <option>NEFT</option>
                   <option>RTGS</option>
@@ -534,20 +589,20 @@
                   <option>Cash</option>
                 </select>
               </div>
-              <div class="form-group" style="margin-bottom:12px">
-                <label style="font-size:11px;color:var(--text3)">Reference / UTR No.</label>
-                <input id="pay-ref" placeholder="Transaction ref…" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px;box-sizing:border-box">
+              <div class="form-group">
+                <label>Reference / UTR No.</label>
+                <input id="pay-ref" placeholder="Transaction ref…">
               </div>
-              <div class="form-group" style="margin-bottom:12px">
-                <label style="font-size:11px;color:var(--text3)">Notes</label>
-                <input id="pay-notes" placeholder="Optional notes…" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text1);font-size:12px;box-sizing:border-box">
+              <div class="form-group">
+                <label>Notes</label>
+                <input id="pay-notes" placeholder="Optional notes…">
               </div>
-              <button class="btn btn-primary" style="width:100%" onclick="savePayment()">+ Record Payment</button>
+              <button class="btn btn-primary btn-block" onclick="savePayment()">+ Record Payment</button>
             </div>
 
             <!-- By Transporter Balance -->
-            <div class="table-card" style="padding:16px">
-              <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:12px">Balance by Transporter</div>
+            <div class="table-card panel-pad">
+              <div class="panel-title">Balance by Transporter</div>
               <div id="pay-by-transporter"></div>
             </div>
 
@@ -560,34 +615,24 @@
         <div class="table-card">
           <div class="table-header">
             <div class="tab-group">
-              <div class="tab active" onclick="setSumTab(this,'pnl')">P&amp;L</div>
-              <div class="tab" onclick="setSumTab(this,'trip-sum')">By Trip</div>
-              <div class="tab" onclick="setSumTab(this,'vehicle-sum')">By Vehicle</div>
-              <div class="tab" onclick="setSumTab(this,'driver-sum')">By Driver</div>
-              <div class="tab" onclick="setSumTab(this,'transporter-sum')">By Transporter</div>
-              <div class="tab" onclick="setSumTab(this,'maint-amount')">Maintenance Amount</div>
-            </div>
-            <div class="month-filter-group">
-              <label class="month-filter-label">Month</label>
-              <input type="month" id="sum-month" class="month-filter-input" onchange="renderPnL()" title="Filter by month">
-              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('sum-month').value='';renderPnL()" title="Clear filter">✕</button>
+              <div class="tab active" role="button" tabindex="0" onclick="setSumTab(this,'pnl')">P&amp;L</div>
+              <div class="tab" role="button" tabindex="0" onclick="setSumTab(this,'trip-sum')">By Trip</div>
+              <div class="tab" role="button" tabindex="0" onclick="setSumTab(this,'vehicle-sum')">By Vehicle</div>
+              <div class="tab" role="button" tabindex="0" onclick="setSumTab(this,'driver-sum')">By Driver</div>
+              <div class="tab" role="button" tabindex="0" onclick="setSumTab(this,'transporter-sum')">By Transporter</div>
             </div>
           </div>
           <div id="sum-pnl">
-            <div style="display:grid;grid-template-columns:1fr 1fr 280px;gap:16px;padding:8px">
-              <div><div style="font-size:11px;color:var(--text3);letter-spacing:1px;margin-bottom:8px;font-family:'IBM Plex Mono',monospace">INCOME</div><div id="pnl-income"></div></div>
-              <div><div style="font-size:11px;color:var(--text3);letter-spacing:1px;margin-bottom:8px;font-family:'IBM Plex Mono',monospace">EXPENSES</div><div id="pnl-expenses"></div></div>
-              <div style="text-align:center;padding:24px 0" id="pnl-result"></div>
+            <div class="pnl-layout">
+              <div><div class="overline">Income</div><div id="pnl-income"></div></div>
+              <div><div class="overline">Expenses</div><div id="pnl-expenses"></div></div>
+              <div class="pnl-result" id="pnl-result"></div>
             </div>
           </div>
-          <div id="sum-trip-sum" class="hidden"><div style="overflow-x:auto"><table class="table"><thead><tr><th>Trip#</th><th>Vehicle</th><th>Route</th><th>KM</th><th>Freight</th><th>Fuel</th><th>Toll</th><th>Misc</th><th>Driver Sal</th><th>Profit</th><th>Margin</th></tr></thead><tbody id="trip-sum-body"></tbody></table></div></div>
-          <div id="sum-vehicle-sum" class="hidden"><table class="table"><thead><tr><th>Vehicle</th><th>Trips</th><th>Total KM</th><th>Revenue</th><th>Fuel Cost</th><th>Maint Cost</th><th>Profit</th><th>Margin</th></tr></thead><tbody id="vehicle-sum-body"></tbody></table></div>
-          <div id="sum-driver-sum" class="hidden"><table class="table"><thead><tr><th>Driver</th><th>Trips</th><th>Total KM</th><th>Rate</th><th>Earned</th><th>Advance</th><th>Paid Out</th><th>Net Balance</th></tr></thead><tbody id="driver-sum-body"></tbody></table></div>
-          <div id="sum-transporter-sum" class="hidden"><table class="table"><thead><tr><th>Transporter</th><th>Trips</th><th>Billed</th><th>Received</th><th>Pending</th></tr></thead><tbody id="transporter-sum-body"></tbody></table></div>
-          <div id="sum-maint-amount" class="hidden">
-            <div style="padding:8px 0 4px;font-size:12px;color:var(--text3)">"Maintenance Amount" is the per-km maintenance charge collected via trips (km × maint/km rate). Compare it against actual maintenance spend to see your buffer or deficit per vehicle.</div>
-            <div style="overflow-x:auto"><table class="table"><thead><tr><th>Vehicle</th><th>Total KM</th><th>Maint Collected (₹)</th><th>Actual Spend (₹)</th><th>Balance</th></tr></thead><tbody id="maint-amount-body"></tbody><tfoot id="maint-amount-foot"></tfoot></table></div>
-          </div>
+          <div id="sum-trip-sum" class="hidden"><div class="table-scroll"><table class="table"><thead><tr><th>Trip#</th><th>Vehicle</th><th>Route</th><th>KM</th><th>Freight</th><th>Fuel</th><th>Toll</th><th>Misc</th><th>Driver Sal</th><th>Profit</th><th>Margin</th></tr></thead><tbody id="trip-sum-body"></tbody></table></div></div>
+          <div id="sum-vehicle-sum" class="hidden"><div class="table-scroll"><table class="table"><thead><tr><th>Vehicle</th><th>Trips</th><th>Total KM</th><th>Revenue</th><th>Fuel Cost</th><th>Maint Cost</th><th>Profit</th><th>Margin</th></tr></thead><tbody id="vehicle-sum-body"></tbody></table></div></div>
+          <div id="sum-driver-sum" class="hidden"><div class="table-scroll"><table class="table"><thead><tr><th>Driver</th><th>Trips</th><th>Total KM</th><th>Rate/Trip</th><th>Earned</th><th>Advance</th><th>Balance</th></tr></thead><tbody id="driver-sum-body"></tbody></table></div></div>
+          <div id="sum-transporter-sum" class="hidden"><div class="table-scroll"><table class="table"><thead><tr><th>Transporter</th><th>Trips</th><th>Billed</th><th>Received</th><th>Pending</th></tr></thead><tbody id="transporter-sum-body"></tbody></table></div></div>
         </div>
       </div>
 
@@ -596,31 +641,26 @@
         <div class="table-card">
           <div class="table-header">
             <div class="tab-group">
-              <div class="tab active" onclick="setRepTab(this,'monthly')">Monthly Report</div>
-              <div class="tab" onclick="setRepTab(this,'pending')">Pending Bills</div>
-              <div class="tab" onclick="setRepTab(this,'balance')">Balance Sheet</div>
-              <div class="tab" onclick="setRepTab(this,'emi-rep')">EMI Schedule</div>
-            </div>
-            <div class="month-filter-group">
-              <label class="month-filter-label">Month</label>
-              <input type="month" id="rep-month" class="month-filter-input" onchange="renderMonthlyReport()" title="Filter by month">
-              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('rep-month').value='';renderMonthlyReport()" title="Clear filter">✕</button>
+              <div class="tab active" role="button" tabindex="0" onclick="setRepTab(this,'monthly')">Monthly Report</div>
+              <div class="tab" role="button" tabindex="0" onclick="setRepTab(this,'pending')">Pending Bills</div>
+              <div class="tab" role="button" tabindex="0" onclick="setRepTab(this,'balance')">Balance Sheet</div>
+              <div class="tab" role="button" tabindex="0" onclick="setRepTab(this,'emi-rep')">EMI Schedule</div>
             </div>
           </div>
           <div id="rep-monthly">
-            <table class="table"><thead><tr><th>Trip#</th><th>Date</th><th>Vehicle</th><th>Route</th><th>KM</th><th>Freight</th><th>Total Cost</th><th>Profit</th></tr></thead>
-            <tbody id="monthly-rep-body"></tbody></table>
+            <div class="table-scroll"><table class="table"><thead><tr><th>Trip#</th><th>Date</th><th>Vehicle</th><th>Route</th><th>KM</th><th>Freight</th><th>Total Cost</th><th>Profit</th></tr></thead>
+            <tbody id="monthly-rep-body"></tbody></table></div>
           </div>
           <div id="rep-pending" class="hidden">
-            <table class="table"><thead><tr><th>Bill#</th><th>Date</th><th>Transporter</th><th>Freight</th><th>Net Payable</th><th>Status</th></tr></thead>
-            <tbody id="pending-bills-body"></tbody></table>
+            <div class="table-scroll"><table class="table"><thead><tr><th>Bill#</th><th>Date</th><th>Transporter</th><th>Freight</th><th>Net Payable</th><th>Status</th></tr></thead>
+            <tbody id="pending-bills-body"></tbody></table></div>
           </div>
           <div id="rep-balance" class="hidden">
-            <div style="padding:16px" id="balance-sheet"></div>
+            <div class="panel-pad" id="balance-sheet"></div>
           </div>
           <div id="rep-emi-rep" class="hidden">
-            <table class="table"><thead><tr><th>Vehicle</th><th>Financier</th><th>EMI</th><th>Due Day</th><th>Paid</th><th>Remaining</th><th>Balance</th></tr></thead>
-            <tbody id="emi-rep-body"></tbody></table>
+            <div class="table-scroll"><table class="table"><thead><tr><th>Vehicle</th><th>Financier</th><th>EMI</th><th>Due Day</th><th>Paid</th><th>Remaining</th><th>Balance</th></tr></thead>
+            <tbody id="emi-rep-body"></tbody></table></div>
           </div>
         </div>
       </div>
@@ -641,7 +681,7 @@
     <div class="modal-body">
       <input type="hidden" id="edit-trip-index" value="-1">
       <div class="form-grid">
-        <div class="form-group"><label>Trip #</label><input id="t-num" readonly style="opacity:.6"></div>
+        <div class="form-group"><label>Trip #</label><input id="t-num" readonly></div>
         <div class="form-group"><label>Date</label><input type="date" id="t-date"></div>
         <div class="form-group"><label>Vehicle</label><select id="t-vehicle"></select></div>
         <div class="form-group"><label>Driver</label><select id="t-driver" onchange="onDriverChange()"></select></div>
@@ -664,7 +704,7 @@
         <div class="calc-row"><span class="calc-label">Est. Maint Cost</span><span class="calc-val" id="c-maint">₹0</span></div>
         <div class="calc-row"><span class="calc-label">Driver Salary</span><span class="calc-val" id="c-salary">₹0</span></div>
         <div class="calc-row"><span class="calc-label">Total Cost</span><span class="calc-val" id="c-cost">₹0</span></div>
-        <div class="calc-row calc-total"><span class="calc-label">Est. Profit</span><span class="calc-val" id="c-profit" style="color:var(--green)">₹0</span></div>
+        <div class="calc-row calc-total"><span class="calc-label">Est. Profit</span><span class="calc-val text-green" id="c-profit">₹0</span></div>
       </div>
     </div>
     <div class="modal-foot">
@@ -718,7 +758,7 @@
         <div class="form-group"><label>Emergency Contact</label><input id="dr-ec-name" placeholder="Name"></div>
         <div class="form-group"><label>Emergency Mobile</label><input id="dr-ec-mobile" placeholder="9876500001"></div>
         <!-- SALARY SECTION -->
-        <div class="form-group form-full" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+        <div class="form-group form-full form-divider">
           <label>Salary Type</label>
           <select id="dr-salary-type" onchange="toggleSalaryFields()">
             <option value="fixed">Fixed Monthly Salary</option>
@@ -739,9 +779,9 @@
           <input id="dr-per-km-rate" type="number" placeholder="1.50" step="0.10">
         </div>
       </div>
-      <div class="calc-box" style="margin-top:10px">
-        <div style="font-size:10px;color:var(--text3);font-family:'IBM Plex Mono',monospace;letter-spacing:1px;margin-bottom:6px">HOW SALARY IS TRACKED</div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.7">
+      <div class="calc-box">
+        <div class="calc-title">How salary is tracked</div>
+        <div class="calc-text">
           • <b>Fixed:</b> Monthly salary — manually set per-trip amount when creating trips<br>
           • <b>Per Trip:</b> Fixed rate per completed trip, auto-filled when creating trips<br>
           • <b>Per KM:</b> Rate × trip distance, auto-calculated from odometer readings<br>
@@ -786,12 +826,12 @@
     <div class="modal-body">
       <input type="hidden" id="edit-bill-index" value="-1">
       <div class="form-grid">
-        <div class="form-group"><label>Bill #</label><input id="b-num" readonly style="opacity:.6"></div>
+        <div class="form-group"><label>Bill #</label><input id="b-num" readonly></div>
         <div class="form-group"><label>Date</label><input type="date" id="b-date"></div>
         <div class="form-group form-full"><label>Transporter</label><select id="b-transporter"></select></div>
         <div class="form-group form-full">
           <label>Trip(s) — hold Ctrl/Cmd to select multiple</label>
-          <select id="b-trips" multiple size="4" style="height:auto"></select>
+          <select id="b-trips" multiple size="4"></select>
         </div>
         <div class="form-group"><label>Freight (₹)</label><input type="number" id="b-freight" oninput="calcBill()" placeholder="28000"></div>
         <div class="form-group"><label>Deduction (₹)</label><input type="number" id="b-deduct" oninput="calcBill()" value="0"></div>
@@ -1002,7 +1042,7 @@
   <div class="modal" style="max-width:380px">
     <div class="modal-head"><span class="modal-title">Confirm Delete</span><button class="modal-close" onclick="closeModal('confirm')">✕</button></div>
     <div class="modal-body">
-      <p style="font-size:13px;color:var(--text2);line-height:1.6" id="confirm-msg">Are you sure you want to delete this record? This cannot be undone.</p>
+      <p class="modal-text" id="confirm-msg">Are you sure you want to delete this record? This cannot be undone.</p>
     </div>
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('confirm')">Cancel</button>
@@ -1013,26 +1053,26 @@
 
 <!-- DRIVER SALARY LEDGER MODAL -->
 <div class="modal-overlay hidden" id="modal-driver-salary">
-  <div class="modal" style="max-width:920px;max-height:90vh;display:flex;flex-direction:column">
+  <div class="modal" style="max-width:920px">
     <div class="modal-head">
       <span class="modal-title">Salary Ledger — <span id="salary-driver-name"></span></span>
-      <div style="display:flex;gap:8px;align-items:center">
+      <div class="header-actions">
         <button class="btn btn-ghost btn-sm" onclick="openNewAdvance(document.getElementById('salary-driver-name').textContent)">+ Advance</button>
         <button class="modal-close" onclick="closeModal('driver-salary')">✕</button>
       </div>
     </div>
-    <div class="modal-body" style="overflow-y:auto;flex:1">
+    <div class="modal-body">
       <div id="salary-summary-html"></div>
-      <div class="table-card" style="margin-top:16px">
+      <div class="table-card">
         <div class="table-header"><span class="table-title">Trip-wise Salary Breakdown</span></div>
-        <div style="overflow-x:auto"><table class="table">
+        <div class="table-scroll"><table class="table">
           <thead><tr><th>TRIP#</th><th>DATE</th><th>ROUTE</th><th>KM</th><th>SALARY EARNED</th><th>ADVANCE</th><th>NET DUE</th><th>STATUS</th><th>ACTIONS</th></tr></thead>
           <tbody id="salary-trips-body"></tbody>
         </table></div>
       </div>
-      <div class="table-card" style="margin-top:14px">
+      <div class="table-card">
         <div class="table-header"><span class="table-title">Advance History</span></div>
-        <div style="overflow-x:auto"><table class="table">
+        <div class="table-scroll"><table class="table">
           <thead><tr><th>DATE</th><th>TRIP#</th><th>AMOUNT</th><th>NOTE</th><th>ACTIONS</th></tr></thead>
           <tbody id="salary-advances-body"></tbody>
         </table></div>
@@ -1061,36 +1101,6 @@
     <div class="modal-foot">
       <button class="btn btn-ghost" onclick="closeModal('driver-advance')">Cancel</button>
       <button class="btn btn-primary" onclick="saveAdvance()">Save Advance</button>
-    </div>
-  </div>
-</div>
-
-<!-- TRANSPORTER DETAIL MODAL -->
-<div class="modal-overlay hidden" id="modal-transporter-detail">
-  <div class="modal" style="max-width:820px">
-    <div class="modal-head"><span class="modal-title" id="transporter-detail-title">Transporter Details</span><button class="modal-close" onclick="closeModal('transporter-detail')">✕</button></div>
-    <div class="modal-body" style="padding:0">
-      <div style="padding:16px 20px 0">
-        <div style="font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Bills</div>
-        <div style="overflow-x:auto">
-          <table class="table" style="font-size:13px">
-            <thead><tr><th>Bill#</th><th>Date</th><th>Trips</th><th>Freight</th><th>Deduction</th><th>Other</th><th>Net Payable</th><th>Paid</th><th>Balance</th><th>Status</th></tr></thead>
-            <tbody id="transporter-detail-bills"></tbody>
-          </table>
-        </div>
-      </div>
-      <div style="padding:16px 20px 0;margin-top:4px">
-        <div style="font-size:13px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Trips</div>
-        <div style="overflow-x:auto">
-          <table class="table" style="font-size:13px">
-            <thead><tr><th>Trip#</th><th>Date</th><th>Route</th><th>Vehicle</th><th>Freight</th><th>Status</th></tr></thead>
-            <tbody id="transporter-detail-trips"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-    <div class="modal-foot">
-      <button class="btn btn-ghost" onclick="closeModal('transporter-detail')">Close</button>
     </div>
   </div>
 </div>
