@@ -35,7 +35,7 @@ function toggleSidebar() {
 document.querySelector('.nav')?.addEventListener('click', () => document.body.classList.remove('nav-open'));
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') document.body.classList.remove('nav-open');
-  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.nav-item, .tab, .export-item')) {
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.matches?.('.nav-item, .tab, .export-item, .notify-item')) {
     e.preventDefault();
     e.target.click();
   }
@@ -166,6 +166,164 @@ function toggleProfileMenu(e) {
 document.addEventListener('click', e => { if (!e.target.closest('#sidebar-actions, #profile-menu-btn')) closeProfileMenu(); });
 const _kbd = document.getElementById('search-kbd');
 if (_kbd) _kbd.textContent = /Mac|iPhone|iPad/i.test(navigator.platform) ? '⌘K' : 'Ctrl K';
+
+/* ── NOTIFICATIONS ────────────────────────────────────────────
+   Derived live from existing data (nothing is stored except which alerts were read):
+   • vehicle documents (insurance, permit, fitness, PUC) and driver licences expiring within 30 days
+   • loan EMIs falling due within 7 days
+   • vehicles close to / past their next service km
+   • unpaid and part-paid invoices                                                        */
+const NOTIFY_KEY = 'fleetops_notifications_read';
+let _notifs = [];
+const _nsvg = inner => `<svg viewBox="0 0 24 24" aria-hidden="true">${inner}</svg>`;
+const NOTIFY_ICONS = {
+  doc:     _nsvg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/>'),
+  user:    _nsvg('<rect width="18" height="14" x="3" y="5" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 10h4M14 14h4M6 17c.6-1.7 5.4-1.7 6 0"/>'),
+  emi:     _nsvg('<line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/>'),
+  service: _nsvg('<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>'),
+  invoice: _nsvg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/>'),
+  ok:      _nsvg('<circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/>'),
+};
+const NOTIFY_ROWS = { vehicles:'vehicles-table-body', drivers:'drivers-table-body', loans:'loans-table-body', maintenance:'maint-table-body', billing:'billing-table-body' };
+const notifyReadSet = () => { try { return new Set(JSON.parse(localStorage.getItem(NOTIFY_KEY) || '[]')); } catch (e) { return new Set(); } };
+const notifySaveSet = set => { try { localStorage.setItem(NOTIFY_KEY, JSON.stringify([...set])); } catch (e) { /* storage unavailable: read-state just won't persist */ } };
+
+function buildNotifications() {
+  const out = [];
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const daysTo = d => Math.round((new Date(d) - today) / 86400000);       // same maths as the expiry badges
+  const fmtDate = d => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const money = n => '₹' + Math.round(Number(n) || 0).toLocaleString('en-IN');
+
+  const expiry = (key, icon, page, name, label, date) => {
+    if (!date) return;
+    const days = daysTo(date);
+    if (isNaN(days) || days >= 30) return;
+    out.push({ key: `${key}:${date}`, t: 2, icon, page, find: name, sev: days <= 7 ? 'critical' : 'warning', rank: days,
+      title: `${label} ${days < 0 ? 'expired' : days === 0 ? 'expires today' : 'expiring soon'}`,
+      meta: `${name} · ${fmtDate(date)}`,
+      when: days < 0 ? `${-days}d overdue` : days === 0 ? 'Today' : `In ${days}d` });
+  };
+  const DOCS = { ins: 'Insurance', permit: 'Permit', fc: 'Fitness certificate', puc: 'PUC certificate' };
+  db.vehicles.filter(v => v.status !== 'Inactive').forEach(v => Object.keys(DOCS).forEach(k => expiry(`veh:${v.id || v.reg}:${k}`, 'doc', 'vehicles', v.reg, DOCS[k], v[k])));
+  db.drivers.filter(d => d.status !== 'Inactive').forEach(d => expiry(`drv:${d.id || d.name}:lic`, 'user', 'drivers', d.name, 'Driving licence', d.licExp));
+
+  // EMIs: next due date is this month's due day, or next month's once it has passed
+  db.loans.filter(l => l.status === 'Active' && l.paid < l.tenure && l.dueDay > 0).forEach(l => {
+    const y = today.getFullYear(), m = today.getMonth();
+    const at = (yy, mm) => new Date(yy, mm, Math.min(l.dueDay, new Date(yy, mm + 1, 0).getDate()));
+    let due = at(y, m); if (due < today) due = at(y, m + 1);
+    const days = Math.round((due - today) / 86400000);
+    if (days > 7) return;
+    out.push({ key: `emi:${l.id}:${due.getFullYear()}-${due.getMonth() + 1}`, t: 0, icon: 'emi', page: 'loans', find: l.vehicle, rank: days,
+      sev: days <= 2 ? 'critical' : 'warning', title: days === 0 ? 'EMI due today' : 'EMI due soon',
+      meta: `${money(l.emi)} · ${l.fin} · ${l.vehicle}`, when: days === 0 ? 'Today' : `In ${days}d` });
+  });
+
+  // Service: remaining km measured from the vehicle's latest known odometer (last service or last trip)
+  const latest = {};
+  db.maintenance.forEach(m => { if (!latest[m.vehicle] || m.curKm > latest[m.vehicle].curKm) latest[m.vehicle] = m; });
+  Object.values(latest).forEach(m => {
+    if (!(m.nextKm > 0)) return;
+    const odo = Math.max(m.curKm || 0, ...db.trips.filter(t => t.vehicle === m.vehicle).map(t => +t.endKm || 0));
+    const rem = m.nextKm - odo;
+    if (rem >= 5000) return;
+    out.push({ key: `svc:${m.vehicle}:${m.nextKm}`, t: 1, icon: 'service', page: 'maintenance', find: m.vehicle, rank: rem / 200,
+      sev: rem < 2000 ? 'critical' : 'warning', title: rem <= 0 ? 'Service overdue' : 'Service due soon',
+      meta: `${m.vehicle} · next service at ${m.nextKm.toLocaleString('en-IN')} km`,
+      when: rem <= 0 ? `${Math.abs(rem).toLocaleString('en-IN')} km over` : `${rem.toLocaleString('en-IN')} km left` });
+  });
+
+  // Invoices with an outstanding balance (older than 30 days = critical)
+  db.bills.forEach(b => {
+    const bal = _billNet(b) - _billPaidAmt(b);
+    if (b.status === 'Paid' || !(bal > 0)) return;
+    const a = -daysTo(b.date), age = isNaN(a) ? 0 : Math.max(0, a), partial = _billPaidAmt(b) > 0;
+    out.push({ key: `inv:${b.id}:${Math.round(bal)}`, t: 3, icon: 'invoice', page: 'billing', find: b.num, rank: -age,
+      sev: age > 30 ? 'critical' : partial ? 'info' : 'warning', title: partial ? 'Invoice part-paid' : 'Invoice unpaid',
+      meta: `${b.num} · ${b.transporter || 'Transporter'} · ${money(bal)} ${partial ? 'balance' : 'due'}`,
+      when: age ? `${age}d old` : 'Today' });
+  });
+
+  const order = { critical: 0, warning: 1, info: 2 };
+  return out.sort((a, b) => order[a.sev] - order[b.sev] || a.t - b.t || a.rank - b.rank);
+}
+
+function renderNotificationList() {
+  const list = document.getElementById('notify-list'); if (!list) return;
+  const read = notifyReadSet();
+  const unread = _notifs.filter(n => !read.has(n.key)).length;
+  document.getElementById('notify-chip').textContent = unread ? `${unread} new` : 'All read';
+  document.getElementById('notify-markall').disabled = unread === 0;
+  list.innerHTML = _notifs.length
+    ? _notifs.slice(0, 50).map((n, i) => `<div class="notify-item sev-${n.sev}${read.has(n.key) ? '' : ' unread'}" role="button" tabindex="0" data-i="${i}">
+        <span class="notify-icon">${NOTIFY_ICONS[n.icon]}</span>
+        <div class="notify-body"><div class="notify-line"><span class="notify-item-title">${searchEsc(n.title)}</span><span class="notify-when">${searchEsc(n.when)}</span></div>
+        <div class="notify-meta">${searchEsc(n.meta)}</div></div></div>`).join('')
+    : `<div class="notify-empty">${NOTIFY_ICONS.ok}<b>You're all caught up</b><span>No expiring documents, upcoming EMIs, service reminders or unpaid invoices.</span></div>`;
+}
+
+function refreshNotifications() {
+  try { _notifs = buildNotifications(); } catch (e) { _notifs = []; }
+  const read = notifyReadSet();
+  const unread = _notifs.filter(n => !read.has(n.key)).length;
+  const badge = document.getElementById('notify-count');
+  if (badge) { badge.textContent = unread > 9 ? '9+' : String(unread); badge.classList.toggle('hidden', unread === 0); }
+  document.getElementById('notify-btn')?.setAttribute('aria-label', unread ? `Notifications, ${unread} unread` : 'Notifications');
+  if (!document.getElementById('notify-panel')?.classList.contains('hidden')) renderNotificationList();
+}
+
+function closeNotifications() {
+  document.getElementById('notify-panel')?.classList.add('hidden');
+  document.getElementById('notify-btn')?.setAttribute('aria-expanded', 'false');
+}
+function positionNotifications() {
+  const r = document.getElementById('notify-btn').getBoundingClientRect(), panel = document.getElementById('notify-panel');
+  const w = Math.min(400, window.innerWidth - 16);
+  panel.style.width = w + 'px';
+  panel.style.left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8)) + 'px';
+  panel.style.top = (r.bottom + 8) + 'px';
+  panel.style.maxHeight = Math.max(240, window.innerHeight - r.bottom - 24) + 'px';
+}
+function toggleNotifications() {
+  const panel = document.getElementById('notify-panel');
+  if (!panel.classList.contains('hidden')) { closeNotifications(); return; }
+  closeGlobalSearch(); closeProfileMenu();
+  document.getElementById('export-menu')?.classList.add('hidden');
+  refreshNotifications(); renderNotificationList(); positionNotifications();
+  panel.classList.remove('hidden');
+  document.getElementById('notify-btn').setAttribute('aria-expanded', 'true');
+}
+function markNotificationsRead(keys) {
+  const active = new Set(_notifs.map(n => n.key));
+  const read = new Set([...notifyReadSet()].filter(k => active.has(k)));   // drop read-state for alerts that no longer apply
+  keys.forEach(k => read.add(k));
+  notifySaveSet(read);
+}
+function markAllNotificationsRead() {
+  markNotificationsRead(_notifs.map(n => n.key));
+  refreshNotifications(); renderNotificationList();
+}
+function openNotification(i) {
+  const n = _notifs[i]; if (!n) return;
+  markNotificationsRead([n.key]);
+  closeNotifications();
+  showPage(n.page);                                       // also refreshes the badge
+  const tbody = NOTIFY_ROWS[n.page];
+  const row = tbody && [...document.querySelectorAll(`#${tbody} tr`)].find(tr => tr.textContent.includes(n.find));
+  if (row) { row.scrollIntoView({ block: 'center', behavior: 'smooth' }); row.classList.remove('row-flash'); void row.offsetWidth; row.classList.add('row-flash'); }
+}
+(() => {
+  document.getElementById('notify-list')?.addEventListener('click', e => {
+    const it = e.target.closest('.notify-item'); if (it) openNotification(+it.dataset.i);
+  });
+  // capture phase: still closes when another control stops click propagation (e.g. the export menu)
+  document.addEventListener('click', e => { if (!e.target.closest('.notify-wrapper')) closeNotifications(); }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNotifications(); });
+  window.addEventListener('resize', closeNotifications);
+  window.addEventListener('focus', refreshNotifications);
+  setInterval(refreshNotifications, 60000);               // alerts are date-driven, so also re-evaluate as time passes
+})();
 
 function workspaceInitials(value) {
   return String(value || 'Workspace').split(/\s|-/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase();
@@ -449,6 +607,9 @@ async function loadDB() {
       if (maxTrip >= db.tripCounter) db.tripCounter = maxTrip + 1;
     }
 
+    // Same clamp for invoices so the next number never collides with an existing one
+    db.billCounter = Math.max(db.billCounter, _nextBillSeq());
+
     // Update sidebar status
     const status = document.getElementById('sb-status');
     if (status) { status.textContent = '● Live'; status.style.color = 'var(--green)'; }
@@ -519,6 +680,7 @@ async function initApp() {
   await loadDB();
   populateSelects();
   renderDashboard();
+  refreshNotifications();
 }
 
 function populateSelects() {
@@ -560,6 +722,7 @@ function showPage(page) {
     expenses: () => { renderDiesel(); renderFastag(); renderAdblue(); renderOtherExp(); renderDriverSalaries(); },
     payments: renderPayments, summary: renderPnL, reports: renderMonthlyReport,
   })[page]?.();
+  refreshNotifications();
 }
 
 function handleTopAction() {
@@ -639,6 +802,7 @@ function closeModal(id) {
     'expense-fastag':'edit-fastag-index','expense-adblue':'edit-adblue-index',
     'expense-other':'edit-other-index','driver-advance':'edit-adv-id'};
   if (map[id]) { const el = document.getElementById(map[id]); if (el) el.value = '-1'; }
+  refreshNotifications(); setTimeout(refreshNotifications, 400);   // saves/deletes finish just after the modal closes
 }
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') document.querySelectorAll('.modal-overlay:not(.hidden)').forEach(m => closeModal(m.id.replace('modal-', '')));
@@ -893,9 +1057,18 @@ function _wireBillingTripSelect() {
     if (fEl) { fEl.value = total; calcBill(); }
   };
 }
+/* Next free invoice sequence = highest INV-#### already used + 1 */
+function _nextBillSeq() {
+  const max = db.bills.reduce((m, b) => {
+    const x = String(b.num || '').match(/(\d+)\s*$/);
+    return x ? Math.max(m, parseInt(x[1], 10)) : m;
+  }, 0);
+  return max + 1;
+}
 function openNewBilling() {
   document.getElementById('edit-bill-index').value = -1;
   document.getElementById('billing-modal-title').textContent = 'Create Invoice';
+  db.billCounter = Math.max(db.billCounter, _nextBillSeq());
   document.getElementById('b-num').value = 'INV-' + String(db.billCounter).padStart(4, '0');
   document.getElementById('b-date').value = today();
   document.getElementById('b-freight').value = ''; document.getElementById('b-deduct').value = '0';
@@ -921,6 +1094,10 @@ function editBill(idx) {
 async function saveBill() {
   const idx = parseInt(document.getElementById('edit-bill-index').value);
   const selTrips = [...document.getElementById('b-trips').selectedOptions].map(o => o.value);
+  const numVal = document.getElementById('b-num').value.trim();
+  if (db.bills.some((x, i) => i !== idx && String(x.num).trim().toLowerCase() === numVal.toLowerCase())) {
+    alert('Invoice number ' + numVal + ' already exists. Please use a different number.'); return;
+  }
   const bill = {
     id: idx >= 0 ? db.bills[idx].id : Date.now(),
     num: document.getElementById('b-num').value, date: document.getElementById('b-date').value,
@@ -933,7 +1110,7 @@ async function saveBill() {
   };
   const ok = await dbUpsert('bills', billToDb(bill));
   if (!ok) return;
-  if (idx >= 0) db.bills[idx] = bill; else { db.bills.unshift(bill); db.billCounter++; await setCounter('bill_counter', db.billCounter); }
+  if (idx >= 0) db.bills[idx] = bill; else { db.bills.unshift(bill); db.billCounter = Math.max(db.billCounter + 1, _nextBillSeq()); await setCounter('bill_counter', db.billCounter); }
   closeModal('billing'); renderBilling();
 }
 async function markBillPaid(idx) {
@@ -1667,11 +1844,11 @@ function populatePayBillSelect() {
   const sel = document.getElementById('pay-bill-select');
   if (!sel) return;
   sel.innerHTML = '<option value="">— Select Invoice —</option>' +
-    db.bills.map(b => {
+    db.bills.filter(b => b.status !== 'Paid' && (_billNet(b) - _billPaidAmt(b)) > 0.005).map(b => {
       const net = _billNet(b);
       const paid = _billPaidAmt(b);
       const bal = net - paid;
-      return `<option value="${b.id}">[${b.num}] ${b.transporter} — ₹${bal.toLocaleString()} due</option>`;
+      return `<option value="${b.id}">[${b.num}] ${b.transporter} — ₹${bal.toLocaleString()} due${paid > 0 ? ' (part-paid)' : ''}</option>`;
     }).join('');
 }
 
@@ -1951,6 +2128,16 @@ function renderVehicles() {
   ).join('')||'<tr><td colspan="11" class="empty-cell">No vehicles added</td></tr>';
 }
 
+/* Driver money: balance = earned - advances - already paid out (same maths as the salary popup) */
+function _driverMoney(name, inPeriod) {
+  const ok = d => !inPeriod || inPeriod(d);
+  const done = db.trips.filter(t => t.driver === name && t.status === 'Completed' && ok(t.date));
+  const earned = done.reduce((s, t) => s + (t.tripSalary || 0), 0);
+  const paidOut = done.filter(t => t.driverSalaryPaid).reduce((s, t) => s + (t.tripSalary || 0), 0);
+  const advances = db.advances.filter(a => a.driver === name && ok(a.date)).reduce((s, a) => s + a.amount, 0);
+  return { earned, paidOut, advances, balance: earned - advances - paidOut, completed: done.length };
+}
+
 /* ── RENDER DRIVERS ───────────────────────────────────────── */
 function renderDrivers() {
   const tbody=document.getElementById('drivers-table-body'); if(!tbody) return;
@@ -1958,9 +2145,7 @@ function renderDrivers() {
     const myT=db.trips.filter(t=>t.driver===d.name);
     const completedT=myT.filter(t=>t.status==='Completed');
     const km=myT.reduce((s,t)=>s+t.km,0);
-    const earned=completedT.reduce((s,t)=>s+(t.tripSalary||0),0);
-    const advances=db.advances.filter(a=>a.driver===d.name).reduce((s,a)=>s+a.amount,0);
-    const balance=earned-advances;
+    const {earned,advances,balance}=_driverMoney(d.name);
     let salaryRate='—';
     if(d.salaryType==='per-trip') salaryRate=`₹${(d.perTripRate||0).toLocaleString()}/trip`;
     else if(d.salaryType==='per-km') salaryRate=`₹${d.perKmRate||0}/km`;
@@ -2146,7 +2331,7 @@ function renderTransporters() {
   tbody.innerHTML=db.transporters.map((t,i)=>{
     const myT=db.trips.filter(tr=>tr.transporter===t.name);
     const billed=myT.reduce((s,tr)=>s+tr.freight,0);
-    const recv=db.bills.filter(b=>b.transporter===t.name&&b.status==='Paid').reduce((s,b)=>s+(b.freight-b.deduct+b.other),0);
+    const recv=db.bills.filter(b=>b.transporter===t.name&&b.status==='Paid'&&_inSum(b.date)).reduce((s,b)=>s+(b.freight-b.deduct+b.other),0);
     const bal=billed-recv;
     return `<tr>
       <td><b>${t.name}</b></td><td>${t.contact}</td><td>${t.mobile}</td>
@@ -2215,41 +2400,88 @@ function renderLoans() {
 }
 
 /* ── RENDER SUMMARY ───────────────────────────────────────── */
+let sumMonth = '';                       // '' = all time, otherwise 'YYYY-MM'
+const _mk = d => String(d || '').slice(0, 7);
+const _inSum = d => !sumMonth || _mk(d) === sumMonth;
+const _r2 = n => Math.round((+n || 0) * 100) / 100;
+const _f2 = n => _r2(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
+const _monthLabel = k => { const [y, m] = k.split('-'); return new Date(+y, +m - 1, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' }); };
+
+function _sumMonthKeys() {
+  const set = new Set();
+  [db.trips, db.diesel, db.fastag, db.adblue, db.maintenance, db.otherExp, db.bills, db.advances]
+    .forEach(arr => (arr || []).forEach(r => { const k = _mk(r.date); if (/^\d{4}-\d{2}$/.test(k)) set.add(k); }));
+  return [...set].sort().reverse();
+}
+function populateSumMonthFilter() {
+  const sel = document.getElementById('sum-month'); if (!sel) return;
+  const keys = _sumMonthKeys();
+  if (sumMonth && !keys.includes(sumMonth)) keys.unshift(sumMonth);
+  sel.innerHTML = '<option value="">All Months</option>' + keys.map(k => `<option value="${k}"${k === sumMonth ? ' selected' : ''}>${_monthLabel(k)}</option>`).join('');
+  sel.value = sumMonth;
+  const lbl = document.getElementById('sum-period-label');
+  if (lbl) lbl.textContent = sumMonth ? _monthLabel(sumMonth) : 'All time';
+}
+function onSumMonthChange(v) { sumMonth = v || ''; renderPnL(); }
+
+/* Number of EMI months falling in the selected period (one EMI per active loan per month, from the loan's start month) */
+function _emiMonths(loan, firstKey, lastKey) {
+  const from = [firstKey, _mk(loan.start)].filter(Boolean).sort().pop();
+  if (!from || !lastKey || from > lastKey) return 0;
+  const [fy, fm] = from.split('-').map(Number), [ly, lm] = lastKey.split('-').map(Number);
+  return (ly - fy) * 12 + (lm - fm) + 1;
+}
+
 function renderPnL() {
-  const rev=db.trips.reduce((s,t)=>s+t.freight,0);
-  const fuel=db.diesel.reduce((s,d)=>s+(d.amount||0),0);
-  const toll=db.fastag.reduce((s,f)=>s+(f.amount||0),0);
-  const adbl=db.adblue.reduce((s,a)=>s+(a.amount||0),0);
-  const mnt=db.maintenance.reduce((s,m)=>s+m.parts+m.labour,0);
-  const sal=db.trips.filter(t=>t.status==='Completed').reduce((s,t)=>s+(t.tripSalary||0),0);
-  const emi=db.loans.filter(l=>l.status==='Active').reduce((s,l)=>s+l.emi,0);
-  const oth=db.otherExp.reduce((s,e)=>s+(e.amount||0),0);
-  const exp=fuel+toll+adbl+mnt+sal+emi+oth;
-  const profit=rev-exp;
-  const margin=rev>0?((profit/rev)*100).toFixed(1):0;
-  const inc=document.getElementById('pnl-income');
-  if(inc) inc.innerHTML=`<div class="pl-row"><span>Freight Revenue</span><span class="pl-income mono">+ ₹${rev.toLocaleString()}</span></div>
-    <div class="pl-row" style="font-weight:500"><span>Total Income</span><span class="pl-income mono">+ ₹${rev.toLocaleString()}</span></div>`;
-  const exEl=document.getElementById('pnl-expenses');
-  if(exEl) exEl.innerHTML=`
-    <div class="pl-row"><span>Diesel</span><span class="pl-expense mono">- ₹${fuel.toLocaleString()}</span></div>
-    <div class="pl-row"><span>Fastag / Tolls</span><span class="pl-expense mono">- ₹${toll.toLocaleString()}</span></div>
-    <div class="pl-row"><span>Adblue</span><span class="pl-expense mono">- ₹${adbl.toLocaleString()}</span></div>
-    <div class="pl-row"><span>Maintenance</span><span class="pl-expense mono">- ₹${mnt.toLocaleString()}</span></div>
-    <div class="pl-row"><span>Driver Salaries</span><span class="pl-expense mono">- ₹${sal.toLocaleString()}</span></div>
-    <div class="pl-row"><span>EMI</span><span class="pl-expense mono">- ₹${emi.toLocaleString()}</span></div>
-    <div class="pl-row"><span>Other</span><span class="pl-expense mono">- ₹${oth.toLocaleString()}</span></div>
-    <div class="pl-row" style="font-weight:500"><span>Total Expenses</span><span class="pl-expense mono">- ₹${exp.toLocaleString()}</span></div>`;
-  const res=document.getElementById('pnl-result');
-  if(res){const color=profit>=0?'var(--green)':'var(--red)';
-    res.innerHTML=`<div class="pnl-kicker">NET ${profit>=0?'PROFIT':'LOSS'}</div>
-    <div class="pnl-figure ${profit>=0?'text-green':'text-red'}">₹${Math.abs(profit).toLocaleString()}</div>
-    <div class="pnl-sub">Margin: ${margin}%</div>`;}
+  populateSumMonthFilter();
+  const trips = db.trips.filter(t => _inSum(t.date));
+  const rev  = _r2(trips.filter(t => t.status !== 'Cancelled').reduce((s, t) => s + t.freight, 0));  // cancelled trips earn nothing
+  const fuel = db.diesel.filter(d => _inSum(d.date)).reduce((s, d) => s + (d.amount || 0), 0);
+  const toll = db.fastag.filter(f => _inSum(f.date)).reduce((s, f) => s + (f.amount || 0), 0);
+  const adbl = db.adblue.filter(a => _inSum(a.date)).reduce((s, a) => s + (a.amount || 0), 0);
+  const mnt  = db.maintenance.filter(m => _inSum(m.date)).reduce((s, m) => s + m.parts + m.labour, 0);
+  const sal  = trips.filter(t => t.status === 'Completed').reduce((s, t) => s + (t.tripSalary || 0), 0);
+  const oth  = db.otherExp.filter(e => _inSum(e.date)).reduce((s, e) => s + (e.amount || 0), 0);
+
+  // EMI period: the chosen month, or for "All Months" from the first month with data up to the latest (never beyond this month)
+  let firstKey = sumMonth, lastKey = sumMonth;
+  if (!sumMonth) {
+    const keys = _sumMonthKeys();
+    const nowKey = _mk(today());
+    firstKey = keys.length ? keys[keys.length - 1] : '';
+    lastKey = keys.length ? [keys[0], nowKey].sort()[0] : '';
+  }
+  const activeLoans = db.loans.filter(l => l.status === 'Active');
+  const emiMonths = Math.max(0, ...activeLoans.map(l => _emiMonths(l, firstKey, lastKey)));
+  const emi = activeLoans.reduce((s, l) => s + l.emi * _emiMonths(l, firstKey, lastKey), 0);
+
+  const exp = _r2(fuel + toll + adbl + mnt + sal + emi + oth);
+  const profit = _r2(rev - exp);
+  const margin = rev > 0 ? ((profit / rev) * 100).toFixed(1) : 0;
+  const f2 = _f2;
+
+  const inc = document.getElementById('pnl-income');
+  if (inc) inc.innerHTML = `<div class="pl-row"><span>Freight Revenue</span><span class="pl-income mono">+ ₹${f2(rev)}</span></div>
+    <div class="pl-row" style="font-weight:500"><span>Total Income</span><span class="pl-income mono">+ ₹${f2(rev)}</span></div>`;
+  const exEl = document.getElementById('pnl-expenses');
+  if (exEl) exEl.innerHTML = `
+    <div class="pl-row"><span>Diesel</span><span class="pl-expense mono">- ₹${f2(fuel)}</span></div>
+    <div class="pl-row"><span>Fastag / Tolls</span><span class="pl-expense mono">- ₹${f2(toll)}</span></div>
+    <div class="pl-row"><span>Adblue</span><span class="pl-expense mono">- ₹${f2(adbl)}</span></div>
+    <div class="pl-row"><span>Maintenance</span><span class="pl-expense mono">- ₹${f2(mnt)}</span></div>
+    <div class="pl-row"><span>Driver Salaries</span><span class="pl-expense mono">- ₹${f2(sal)}</span></div>
+    <div class="pl-row"><span>EMI${emiMonths ? ` (${emiMonths} month${emiMonths === 1 ? '' : 's'})` : ''}</span><span class="pl-expense mono">- ₹${f2(emi)}</span></div>
+    <div class="pl-row"><span>Other</span><span class="pl-expense mono">- ₹${f2(oth)}</span></div>
+    <div class="pl-row" style="font-weight:500"><span>Total Expenses</span><span class="pl-expense mono">- ₹${f2(exp)}</span></div>`;
+  const res = document.getElementById('pnl-result');
+  if (res) res.innerHTML = `<div class="pnl-kicker">NET ${profit >= 0 ? 'PROFIT' : 'LOSS'}</div>
+    <div class="pnl-figure ${profit >= 0 ? 'text-green' : 'text-red'}">${profit < 0 ? '−' : ''}₹${f2(Math.abs(profit))}</div>
+    <div class="pnl-sub">Margin: ${margin}%</div>`;
   renderTripSummary(); renderVehicleSummary(); renderDriverSummary(); renderTransporterSummary();
 }
 function renderTripSummary() {
   const tbody=document.getElementById('trip-sum-body'); if(!tbody) return;
-  tbody.innerHTML=db.trips.map(t=>{
+  tbody.innerHTML=db.trips.filter(t=>_inSum(t.date)).map(t=>{
     const fuel=t.km>0?Math.round((t.km/t.mileage)*t.dprice):0;
     const maint=Math.round(t.km*t.maintKm);
     const toll=db.fastag.filter(f=>f.trip===t.num).reduce((s,f)=>s+(f.amount||0),0);
@@ -2270,7 +2502,7 @@ function renderTripSummary() {
 function renderVehicleSummary() {
   const tbody=document.getElementById('vehicle-sum-body'); if(!tbody) return;
   tbody.innerHTML=db.vehicles.map(v=>{
-    const vT=db.trips.filter(t=>t.vehicle===v.reg);
+    const vT=db.trips.filter(t=>t.vehicle===v.reg&&_inSum(t.date));
     const km=vT.reduce((s,t)=>s+t.km,0),rev=vT.reduce((s,t)=>s+t.freight,0);
     const fuel=vT.reduce((s,t)=>s+(t.km>0?(t.km/t.mileage)*t.dprice:0),0);
     const maint=vT.reduce((s,t)=>s+(t.km*t.maintKm),0);
@@ -2285,15 +2517,12 @@ function renderVehicleSummary() {
 function renderDriverSummary() {
   const tbody=document.getElementById('driver-sum-body'); if(!tbody) return;
   tbody.innerHTML=db.drivers.map(d=>{
-    const dT=db.trips.filter(t=>t.driver===d.name);
-    const completedT=dT.filter(t=>t.status==='Completed');
+    const dT=db.trips.filter(t=>t.driver===d.name&&_inSum(t.date));
     const km=dT.reduce((s,t)=>s+t.km,0);
-    const earned=completedT.reduce((s,t)=>s+(t.tripSalary||0),0);
-    const adv=db.advances.filter(a=>a.driver===d.name).reduce((s,a)=>s+a.amount,0);
-    const bal=earned-adv;
+    const {earned,advances:adv,paidOut,balance:bal}=_driverMoney(d.name,_inSum);
     return `<tr><td><b>${d.name}</b></td><td>${dT.length}</td><td class="mono">${km.toLocaleString()}</td>
       <td>₹${(d.salary||0).toLocaleString()}/trip</td><td>₹${earned.toLocaleString()}</td><td>₹${adv.toLocaleString()}</td>
-      <td class="${bal>=0?'text-green':'text-red'}">₹${Math.abs(bal).toLocaleString()} ${bal>=0?'cr':'db'}</td></tr>`;
+      <td class="${bal>0?'text-amber':'text-green'}">₹${Math.abs(bal).toLocaleString()} ${bal>=0?'due':'cr'}</td></tr>`;
   }).join('');
 }
 function renderDriverSalaries() {
@@ -2310,7 +2539,7 @@ function renderDriverSalaries() {
 function renderTransporterSummary() {
   const tbody=document.getElementById('transporter-sum-body'); if(!tbody) return;
   tbody.innerHTML=db.transporters.map(t=>{
-    const tT=db.trips.filter(tr=>tr.transporter===t.name);
+    const tT=db.trips.filter(tr=>tr.transporter===t.name&&_inSum(tr.date));
     const billed=tT.reduce((s,tr)=>s+tr.freight,0);
     const recv=db.bills.filter(b=>b.transporter===t.name&&b.status==='Paid').reduce((s,b)=>s+(b.freight-b.deduct+b.other),0);
     const pending=billed-recv;
