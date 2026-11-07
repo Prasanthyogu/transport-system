@@ -1043,9 +1043,15 @@ async function deleteTransporter(idx) {
 }
 
 /* ── BILLING ──────────────────────────────────────────────── */
-function _wireBillingTripSelect() {
+function _wireBillingTripSelect(editIdx = -1) {
   const bTrips = document.getElementById('b-trips'); if (!bTrips) return;
-  bTrips.innerHTML = db.trips.map(t =>
+  // Only trips pending for billing: Completed and not already on another invoice.
+  // When editing, trips already on this invoice stay listed so they can be kept/removed.
+  const billed = new Set();
+  db.bills.forEach((b, i) => { if (i !== editIdx) (b.trips || []).forEach(n => billed.add(n)); });
+  const own = editIdx >= 0 ? (db.bills[editIdx].trips || []) : [];
+  const pending = db.trips.filter(t => own.includes(t.num) || (t.status === 'Completed' && !billed.has(t.num)));
+  bTrips.innerHTML = pending.map(t =>
     `<option value="${t.num}">${t.num} — ${t.from}→${t.to} — ₹${t.freight.toLocaleString()}</option>`
   ).join('');
   bTrips.onchange = () => {
@@ -1086,7 +1092,7 @@ function editBill(idx) {
   document.getElementById('b-transporter').value = b.transporter;
   document.getElementById('b-freight').value = b.freight; document.getElementById('b-deduct').value = b.deduct;
   document.getElementById('b-other').value = b.other;
-  _wireBillingTripSelect();
+  _wireBillingTripSelect(idx);
   const bTrips = document.getElementById('b-trips');
   if (bTrips) [...bTrips.options].forEach(o => { o.selected = (b.trips || []).includes(o.value); });
   calcBill(); _show('billing');
